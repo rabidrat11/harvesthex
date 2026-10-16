@@ -1,0 +1,12 @@
+node_modules/
+dist/
+.art-preview/
+test-results/
+playwright-report/
+.DS_Store
+*.log
+
+# Licensed assets (Cute Fantasy Icons, non-commercial, no redistribution).
+# Supplied to the Pages build from a repository secret; see README.
+public/assets/cf-icons-16.png
+public/assets/cf-icons-LICENCE.txt
