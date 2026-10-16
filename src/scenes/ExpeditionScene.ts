@@ -31,6 +31,8 @@ export class ExpeditionScene extends Phaser.Scene {
   private chestOffers: Offer[] = [];
   private endT = -1;
   private ended = false;
+  /** Set once the player has chosen to go home, so a second press does nothing. */
+  private leaving = false;
   private camX = 0;
   private camY = 0;
   private bossShown = false;
@@ -54,6 +56,7 @@ export class ExpeditionScene extends Phaser.Scene {
     this.rng = new Rng(this.loadout.seed ^ 0x51a7);
     this.r = new ExpeditionRenderer(this, this.w);
     this.ended = false;
+    this.leaving = false;
     this.banked = null;
     this.errors = 0;
     this.checkpointT = 15;
@@ -465,6 +468,8 @@ export class ExpeditionScene extends Phaser.Scene {
         ui.bump();
       },
       finish: () => {
+        if (this.leaving) return;
+        this.leaving = true;
         ui.closeAll();
         game.audio.setMuffled(false);
         const r = ui.get().results;
@@ -511,6 +516,8 @@ export class ExpeditionScene extends Phaser.Scene {
     if (!this.banked) this.bank(result);
     game.audio.setMuffled(false);
     ui.closeAll();
+    // Pickup toasts from the final sweep would sit on top of the results.
+    ui.set({ toasts: [] });
     this.openPanel('results', { result });
   }
 

@@ -309,8 +309,8 @@ export function ControlsPanel() {
 
 export function CreditsPanel() {
   return (
-    <Modal width={360} onBack={() => ui.close()}>
-      <div class="parch scroll" style={{ padding: '2px 6px 6px', maxHeight: '300px' }}>
+    <Modal width={460} onBack={() => ui.close()}>
+      <div class="parch scroll" style={{ padding: '2px 6px 6px' }}>
         <h2>Credits</h2>
         <p class="speech">
           <b>HARVESTHEX</b>: grow something dangerous. Designed, written, drawn and composed as one piece: game code, pixel art for characters, creatures, crops, buildings and effects, procedural sound and music.

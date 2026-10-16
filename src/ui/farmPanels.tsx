@@ -485,29 +485,6 @@ function PottingPanel() {
           <div class="small">
             <Icon k={WEAPONS[cls.starter].icon} /> {WEAPONS[cls.starter].name} (always packed)
           </div>
-          <div class="divider" />
-          <h3>Jars ({jarTotal}/{maxJars(p.flags)})</h3>
-          {Object.values(JARS).map((j) => {
-            const have = p.jars[j.id] ?? 0;
-            const take = p.loadout.jars[j.id] ?? 0;
-            return (
-              <div class="row small" style={{ justifyContent: 'space-between' }}>
-                <span class="row" title={j.desc}>
-                  <Icon k={j.icon} scale={0.75} />
-                  {j.name} <span class="muted">({have})</span>
-                </span>
-                <span class="row">
-                  <Btn disabled={take <= 0} onClick={() => ((p.loadout.jars[j.id] = take - 1), refresh())}>
-                    -
-                  </Btn>
-                  <b>{take}</b>
-                  <Btn disabled={take >= have || jarTotal >= maxJars(p.flags)} onClick={() => ((p.loadout.jars[j.id] = take + 1), refresh())}>
-                    +
-                  </Btn>
-                </span>
-              </div>
-            );
-          })}
           {p.tiers.unlocked > 1 && (
             <>
               <div class="divider" />
@@ -533,7 +510,7 @@ function PottingPanel() {
               </button>
             ))}
           </div>
-          <div class="col" style={{ gap: '1px', marginTop: '3px', minHeight: '64px' }}>
+          <div class="col" style={{ gap: '1px', marginTop: '3px' }}>
             {grafts.map((g, i) =>
               g ? (
                 <div class="small row">
@@ -572,6 +549,29 @@ function PottingPanel() {
               </div>
             </div>
           )}
+          <div class="divider" />
+          <h3>Jars ({jarTotal}/{maxJars(p.flags)})</h3>
+          {Object.values(JARS).map((j) => {
+            const have = p.jars[j.id] ?? 0;
+            const take = p.loadout.jars[j.id] ?? 0;
+            return (
+              <div class="row small" style={{ justifyContent: 'space-between' }}>
+                <span class="row" title={j.desc}>
+                  <Icon k={j.icon} scale={0.75} />
+                  {j.name} <span class="muted">({have})</span>
+                </span>
+                <span class="row">
+                  <Btn class="tiny" disabled={take <= 0} onClick={() => ((p.loadout.jars[j.id] = take - 1), refresh())}>
+                    -
+                  </Btn>
+                  <b style={{ minWidth: '8px', textAlign: 'center' }}>{take}</b>
+                  <Btn class="tiny" disabled={take >= have || jarTotal >= maxJars(p.flags)} onClick={() => ((p.loadout.jars[j.id] = take + 1), refresh())}>
+                    +
+                  </Btn>
+                </span>
+              </div>
+            );
+          })}
         </div>
       </div>
       <div class="row" style={{ marginTop: '5px' }}>

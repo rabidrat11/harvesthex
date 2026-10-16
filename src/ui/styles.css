@@ -254,6 +254,13 @@ h3 {
   white-space: nowrap;
 }
 
+/* For steppers inside dense lists. */
+.btn.tiny {
+  min-height: 12px;
+  padding: 0 4px;
+  line-height: 1;
+}
+
 .btn:hover,
 .btn:focus-visible,
 .btn.focus {
@@ -363,6 +370,21 @@ h3 {
   max-height: 344px;
   display: flex;
   flex-direction: column;
+}
+
+/* A panel never grows past the frame (where its buttons would be out of
+   reach): if the content is too tall, it scrolls inside the panel. */
+.modal > .wood,
+.modal > .parch {
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--wood) transparent;
+}
+
+.results-body {
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 .modal-title {
@@ -735,6 +757,16 @@ h3 {
   flex-direction: column;
   gap: 2px;
   align-items: flex-end;
+}
+
+/* With a panel open, the bottom right is where its main button lives: keep
+   messages out of the way, bottom left. */
+#ui:has(.modal-backdrop) .toasts {
+  right: auto;
+  left: 6px;
+  bottom: 6px;
+  align-items: flex-start;
+  opacity: 0.92;
 }
 
 .toast {

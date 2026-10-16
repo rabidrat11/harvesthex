@@ -17,6 +17,25 @@ function watchErrors(page: Page) {
 
 const state = (page: Page) => page.evaluate(() => window.__HX.state());
 
+/** Labels of the open panel's buttons that sit outside the visible frame (unreachable). */
+const buttonsOffFrame = (page: Page) =>
+  page.evaluate(() => {
+    const f = document.getElementById('frame')!.getBoundingClientRect();
+    return [...document.querySelectorAll('.modal button')]
+      .filter((b) => {
+        const r = b.getBoundingClientRect();
+        if (r.height === 0) return false;
+        // Inside a scrolling panel, a button only counts once it is scrolled to.
+        const sc = b.closest('.modal > .wood, .modal > .parch, .scroll') as HTMLElement | null;
+        if (sc) {
+          const s = sc.getBoundingClientRect();
+          if (r.top >= s.bottom || r.bottom <= s.top) return false;
+        }
+        return r.bottom > f.bottom + 1 || r.top < f.top - 1;
+      })
+      .map((b) => b.textContent);
+  });
+
 async function toScreen(page: Page, scene: string, gx: number, gy: number) {
   return page.evaluate(
     ([sc, x, y]) => {
@@ -243,17 +262,21 @@ test('every farm building opens a working panel', async ({ page }) => {
   await page.evaluate(() => {
     window.__HX.newGame();
     const p = window.__HX.game.profile;
-    p.buildings.bench = 1;
-    p.buildings.compost = 1;
-    p.produce.push({ species: 'carrot', traits: [], quality: 2, count: 2 }, { species: 'chilli', traits: [], quality: 1, count: 1 });
+    // Late game: everything built and unlocked, the stores full.
+    for (const k of Object.keys(p.buildings)) p.buildings[k] = 2;
+    p.tiers.unlocked = 3;
+    p.farthings = 2600;
+    for (const sp of ['carrot', 'chilli', 'turnip', 'sunflower', 'pumpkin', 'tomato', 'beebalm', 'stormcorn', 'thornvine']) p.produce.push({ species: sp, traits: ['giant'], quality: 3, count: 4 });
     p.materials.root_pollen = 1;
+    p.jars = { jam: 4, chilli_jam: 3, balm: 2 };
     window.__HX.startFarm();
   });
   await page.waitForFunction(() => window.__HX.state().scenes.includes('farm'));
-  for (const panel of ['farmhouse', 'archive', 'bench', 'smithy', 'potting', 'compost', 'shrine', 'character', 'pause']) {
+  for (const panel of ['farmhouse', 'archive', 'bench', 'smithy', 'potting', 'compost', 'shrine', 'character', 'pause', 'settings', 'credits']) {
     await page.evaluate((pn) => window.__HX.ui.open(pn), panel);
     await page.waitForTimeout(150);
     await expect(page.locator('.modal').first()).toBeVisible();
+    expect(await buttonsOffFrame(page), `${panel}: every button in reach`).toEqual([]);
     await page.keyboard.press('Escape');
     await page.waitForTimeout(150);
     expect(await page.evaluate(() => window.__HX.ui.get().panel), `Escape closes ${panel}`).toBeNull();
@@ -355,12 +378,21 @@ test('beating the King banks the run at once and goes straight to the results', 
   await expect(page.getByText('New game')).toBeVisible();
   await page.evaluate(() => {
     window.__HX.newGame();
+    const p = window.__HX.game.profile;
+    for (const pl of p.plots.slice(0, 6)) {
+      pl.tilled = true;
+      pl.crop = { species: 'carrot', traits: [], growth: 20, fertilised: false, dryDays: 0, blessed: false, plantedDay: 1 };
+    }
     window.__HX.startExpedition(44);
   });
   await page.waitForFunction(() => window.__HX.state().world?.phase === 'acre');
   await page.evaluate(() => {
-    window.__HX.world().godMode = true;
+    const w = window.__HX.world();
+    w.godMode = true;
     window.__HX.strongBuild();
+    // A big haul: every material and a satchel of seeds, as a long run brings home.
+    for (const k of ['wood', 'iron_ore', 'copper_ore', 'leather', 'feather', 'bone', 'worm', 'thorn_fibre', 'ember_ore', 'gold_ore', 'frost_crystal', 'storm_glass', 'red_gem', 'void_shard', 'eye']) w.run.loot.materials[k] = 7;
+    for (const sp of ['sunflower', 'tomato', 'pumpkin', 'thornvine', 'choircap', 'stormcorn', 'beebalm', 'chilli', 'emberroot', 'sporelight', 'briargourd', 'thunderpea']) w.run.loot.seeds.push({ species: sp, traits: ['giant'] });
     window.__HX.skipToBoss();
   });
   await page.waitForFunction(() => window.__HX.state().world?.boss?.state === 'move', null, { timeout: 15000 });
@@ -374,8 +406,17 @@ test('beating the King banks the run at once and goes straight to the results', 
   expect(await page.evaluate(() => window.__HX.ui.get().panel)).toBe('results');
   const seeds = await page.evaluate(() => window.__HX.game.profile.seeds.map((s: any) => s.species));
   expect(seeds).toContain('kingsmarrow');
+  // However big the haul, the way home is on screen.
+  expect(await buttonsOffFrame(page)).toEqual([]);
+  await expect(page.getByText('Return to the farm')).toBeInViewport();
   await page.getByText('Return to the farm').click();
   await page.waitForFunction(() => window.__HX.state().scenes.includes('farm'));
+  // After a victory the bench offers the rot tiers too; setting out stays in reach.
+  await page.waitForTimeout(600);
+  await page.evaluate(() => window.__HX.ui.closeAll());
+  await page.evaluate(() => window.__HX.ui.open('potting'));
+  await expect(page.getByText('Set out for the meadow')).toBeVisible();
+  expect(await buttonsOffFrame(page)).toEqual([]);
   expect(errors).toEqual([]);
 });
 

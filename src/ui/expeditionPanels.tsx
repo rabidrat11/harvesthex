@@ -313,14 +313,25 @@ export function ResultsPanel() {
   const maxDmg = Math.max(1, ...r.weapons.map((x) => x.damage));
   const grew = r.growth.length;
   const ready = r.growth.filter((g) => g.after >= 3).length;
+  const seeds = new Map<string, { species: string; traits: string[]; n: number }>();
+  for (const s of r.seeds) {
+    const k = `${s.species}|${s.traits.join(',')}`;
+    const g = seeds.get(k);
+    if (g) g.n++;
+    else seeds.set(k, { species: s.species, traits: s.traits, n: 1 });
+  }
+  const home = () => bridge.expedition?.finish();
   return (
-    <Modal width={560}>
-      <div class="wood" style={{ padding: '2px 6px 6px' }}>
+    // However big the haul, the way home stays on screen: the middle scrolls,
+    // and Escape also returns to the farm.
+    <Modal width={560} onBack={home}>
+      <div class="wood col" style={{ padding: '2px 6px 6px', gap: 0 }}>
         <div style={{ textAlign: 'center' }}>
           <h2 class="display" style={{ color: o.colour, fontSize: '30px' }}>{o.title}</h2>
           <div class="small">{o.sub}</div>
           {r.outcome === 'defeat' && <div class="small bad">Felled by {r.cause || 'the meadow'}. You kept all seeds and growth, and {Math.round(r.keptShare * 100)}% of farthings and materials.</div>}
         </div>
+        <div class="scroll results-body">
         <div class="row" style={{ alignItems: 'flex-start', gap: '6px', marginTop: '4px' }}>
           <div class="parch" style={{ flex: '0 0 170px', padding: '0 4px 2px' }}>
             <h3>The expedition</h3>
@@ -365,22 +376,24 @@ export function ResultsPanel() {
         </div>
         <div class="parch" style={{ marginTop: '4px', padding: '0 4px 2px' }}>
           <h3>Brought home</h3>
-          <div class="row" style={{ flexWrap: 'wrap', gap: '6px' }}>
+          <div class="row" style={{ flexWrap: 'wrap', gap: '1px 8px' }}>
             <span class="row" title={r.sapFarthings ? `${r.sapFarthings} from leftover sap` : ''}>
               <Icon k="ic_farthing" /> <b>{r.farthings}</b> farthings
             </span>
             {Object.entries(r.materials).map(([k, v]) => (
-              <span class="row" title={MATERIALS[k]?.name}>
-                <Icon k={MATERIALS[k]?.icon ?? 'cf_1'} /> {v} {MATERIALS[k]?.name}
+              <span class="row" title={MATERIALS[k]?.name ?? k}>
+                <Icon k={MATERIALS[k]?.icon ?? 'cf_1'} /> {v}
+                {Object.keys(r.materials).length <= 6 && ` ${MATERIALS[k]?.name ?? k}`}
               </span>
             ))}
           </div>
-          {r.seeds.length > 0 && (
-            <div class="row" style={{ flexWrap: 'wrap', gap: '4px', marginTop: '2px' }}>
-              {r.seeds.map((s) => (
+          {seeds.size > 0 && (
+            <div class="row" style={{ flexWrap: 'wrap', gap: '1px 8px', marginTop: '2px' }}>
+              {[...seeds.values()].map((s) => (
                 <span class={`row r-${CROPS[s.species]?.rarity}`}>
                   <Icon k={CROPS[s.species]?.seed ?? 'seed_pea'} />
-                  {CROPS[s.species]?.name}
+                  {CROPS[s.species]?.name ?? s.species}
+                  {s.n > 1 && <span class="muted">x{s.n}</span>}
                   <Traits traits={s.traits} />
                 </span>
               ))}
@@ -397,8 +410,9 @@ export function ResultsPanel() {
             ))}
           </div>
         )}
-        <div class="row" style={{ justifyContent: 'center', marginTop: '6px' }}>
-          <Btn big class="primary" autofocus onClick={() => bridge.expedition?.finish()}>
+        </div>
+        <div class="row" style={{ justifyContent: 'center', marginTop: '5px', flex: '0 0 auto' }}>
+          <Btn big class="primary" autofocus onClick={home}>
             Return to the farm
           </Btn>
         </div>
