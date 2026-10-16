@@ -81,7 +81,7 @@ src/art/      palette, sprite format, font, and every sprite definition
 docs/         design notes, art manifest, asset catalogue
 ```
 
-See `PROGRESS.md` for the current state and `docs/DESIGN.md` for the design.
+See `docs/DESIGN.md` for the design.
 
 ## Licences
 
