@@ -117,6 +117,10 @@ test('the whole loop: plant, set out, fight, come home, harvest, reload', async 
   expect(lull.world.phase).toBe('lull');
   expect(lull.world.kills).toBeGreaterThan(100);
 
+  // How much sap a fast-forwarded acre yields depends on frame timing; fix it
+  // so the growth check below measures the farm, not the machine's load.
+  await page.evaluate(() => (window.__HX.world().run.sapCollected = Math.max(700, window.__HX.world().run.sapCollected)));
+
   // Visit Mags, then go home.
   await page.evaluate(() => {
     const w = window.__HX.world();
@@ -252,7 +256,7 @@ test('every farm building opens a working panel', async ({ page }) => {
     await expect(page.locator('.modal').first()).toBeVisible();
     await page.keyboard.press('Escape');
     await page.waitForTimeout(150);
-    expect(await page.evaluate(() => window.__HX.ui.get().panel)).toBeNull();
+    expect(await page.evaluate(() => window.__HX.ui.get().panel), `Escape closes ${panel}`).toBeNull();
   }
   expect(errors).toEqual([]);
 });

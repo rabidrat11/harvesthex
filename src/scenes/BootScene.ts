@@ -17,9 +17,13 @@ export class BootScene extends Phaser.Scene {
 
   async create() {
     buildTextures(this);
-    // Make sure the pixel fonts are ready before any DOM text is measured.
+    // Make sure the fonts are ready before any DOM text is measured.
     try {
-      await document.fonts.load('20px "Jersey 10"');
+      await Promise.all([
+        document.fonts.load('20px "Jersey 10"'),
+        document.fonts.load('12px "Atkinson Hyperlegible Next"'),
+        document.fonts.load('bold 12px "Atkinson Hyperlegible Next"'),
+      ]);
     } catch {
       /* fonts fall back gracefully */
     }

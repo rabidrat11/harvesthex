@@ -20,7 +20,6 @@ export interface ClassDef {
   prefers: string[];
   portrait: string;
   sprite: string;
-  unlock: { desc: string } | null;
   blurb: string;
 }
 
@@ -54,7 +53,6 @@ export const CLASSES: Record<string, ClassDef> = {
     prefers: ['projectile', 'rapid', 'heavy'],
     portrait: 'portrait_fieldhand',
     sprite: 'hero_fieldhand',
-    unlock: null,
     blurb: 'Steady hands and a good sling. Benefits from growing a bit of everything.',
   },
   botanist: {
@@ -78,7 +76,6 @@ export const CLASSES: Record<string, ClassDef> = {
     prefers: ['poison', 'summon', 'flower', 'aura'],
     portrait: 'portrait_botanist',
     sprite: 'hero_botanist',
-    unlock: { desc: 'Harvest 5 crops on the farm.' },
     blurb: 'Grows trouble. Mutations, poisons and singing mushrooms.',
   },
   reaper: {
@@ -102,7 +99,6 @@ export const CLASSES: Record<string, ClassDef> = {
     prefers: ['melee', 'bleed', 'heal'],
     portrait: 'portrait_reaper',
     sprite: 'hero_reaper',
-    unlock: { desc: 'Defeat a Bramble Knight in the Blighted Meadow.' },
     blurb: 'Close, fast and fatal. Lives on the edge of the blade.',
   },
   tinkerer: {
@@ -121,7 +117,6 @@ export const CLASSES: Record<string, ClassDef> = {
     prefers: ['projectile', 'hazard', 'defence', 'chain'],
     portrait: 'portrait_tinkerer',
     sprite: 'hero_tinkerer',
-    unlock: { desc: 'Mend the pump, rebuild the bench and build the compost bin.' },
     blurb: 'Builds the fight around them. Turrets do the heavy lifting.',
   },
   apiarist: {
@@ -140,7 +135,6 @@ export const CLASSES: Record<string, ClassDef> = {
     prefers: ['summon', 'bees', 'flower', 'aura'],
     portrait: 'portrait_apiarist',
     sprite: 'hero_apiarist',
-    unlock: { desc: 'Harvest 3 flowers (sunflower or bee balm).' },
     blurb: 'Never fights alone. Smoke slows the field while the bees do the rest.',
   },
   rootspeaker: {
@@ -159,7 +153,6 @@ export const CLASSES: Record<string, ClassDef> = {
     prefers: ['defence', 'hazard', 'heavy', 'knockback'],
     portrait: 'portrait_rootspeaker',
     sprite: 'hero_rootspeaker',
-    unlock: { desc: 'Reach the Rot Line, the fourth acre of the meadow.' },
     blurb: 'Plants their feet and lets the meadow come to them.',
   },
   strawman: {
@@ -178,7 +171,6 @@ export const CLASSES: Record<string, ClassDef> = {
     prefers: ['orbit', 'aura', 'defence', 'heal'],
     portrait: 'portrait_strawman',
     sprite: 'hero_strawman',
-    unlock: { desc: 'Find the farm\u2019s wandering scarecrow\u2019s secret.' },
     blurb: 'Wants to be hit. Every blow scatters needles everywhere.',
   },
   forager: {
@@ -197,7 +189,6 @@ export const CLASSES: Record<string, ClassDef> = {
     prefers: ['projectile', 'pierce', 'poison'],
     portrait: 'portrait_forager',
     sprite: 'hero_forager',
-    unlock: { desc: 'Bring 12 seeds home from the meadow.' },
     blurb: 'Comes home with the best seeds. Lives off the land.',
   },
   miller: {
@@ -216,7 +207,6 @@ export const CLASSES: Record<string, ClassDef> = {
     prefers: ['projectile', 'rapid', 'chain'],
     portrait: 'portrait_miller',
     sprite: 'hero_miller',
-    unlock: { desc: 'Reach level 20 on an expedition.' },
     blurb: 'Hundreds of little hits, faster and faster as the stone turns.',
   },
   witch: {
@@ -235,7 +225,6 @@ export const CLASSES: Record<string, ClassDef> = {
     prefers: ['projectile', 'poison', 'aura'],
     portrait: 'portrait_witch',
     sprite: 'hero_witch',
-    unlock: { desc: 'Discover 6 different mutation traits.' },
     blurb: 'Curses spread. Moonlight seeks. Stay out of reach.',
   },
   ploughman: {
@@ -254,7 +243,6 @@ export const CLASSES: Record<string, ClassDef> = {
     prefers: ['melee', 'heavy', 'knockback'],
     portrait: 'portrait_ploughman',
     sprite: 'hero_ploughman',
-    unlock: { desc: 'Have Bertha clear the second row of beds.' },
     blurb: 'Big, slow and immovable. Everything else moves out of the way.',
   },
   alchemist: {
@@ -273,7 +261,6 @@ export const CLASSES: Record<string, ClassDef> = {
     prefers: ['area', 'explosion', 'fire', 'poison', 'hazard'],
     portrait: 'portrait_alchemist',
     sprite: 'hero_alchemist',
-    unlock: { desc: 'Seal 3 jars in the farmhouse kitchen.' },
     blurb: 'Fire on poison, poison on fire. The meadow burns green.',
   },
 };

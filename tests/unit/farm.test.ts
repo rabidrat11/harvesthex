@@ -4,7 +4,8 @@ import { till, plant, water, harvest, growFarm, plotStage, mutateCrop, crossbree
 import { Rng } from '../../src/core/rng';
 import { CROPS } from '../../src/data/crops';
 import { envelope, parseSave, loadProfile, saveProfile, migrate, validate } from '../../src/meta/save';
-import { buildResult, applyResult, checkUnlocks } from '../../src/meta/results';
+import { buildResult, applyResult, checkUnlocks, type RunResult } from '../../src/meta/results';
+import { CLASS_ORDER } from '../../src/data/classes';
 import { World } from '../../src/sim/world';
 
 class MemStorage implements Storage {
@@ -212,13 +213,21 @@ describe('expedition results', () => {
     expect(p.jars.jam).toBe(4);
   });
 
-  it('unlocks the botanist after five harvests and the reaper after a knight', () => {
+  it('opens all twelve classes from the first day, including for old saves', () => {
     const p = newProfile();
-    p.stats.harvested = 5;
-    p.almanac.enemies.knight = 1;
-    const u = checkUnlocks(p);
-    expect(p.classes.unlocked).toEqual(['fieldhand', 'botanist', 'reaper']);
-    expect(u).toHaveLength(2);
+    expect(p.classes.unlocked).toEqual(CLASS_ORDER);
+    expect(CLASS_ORDER).toHaveLength(12);
+    const old = { ...newProfile(), classes: { unlocked: ['fieldhand'], selected: 'reaper' } };
+    const back = validate(JSON.parse(JSON.stringify(old)));
+    expect(back.classes.unlocked).toEqual(CLASS_ORDER);
+    expect(back.classes.selected).toBe('reaper');
+  });
+
+  it('a first victory raises the rot tier', () => {
+    const p = newProfile();
+    const u = checkUnlocks(p, { outcome: 'victory', tier: 1 } as RunResult);
+    expect(p.tiers.unlocked).toBe(2);
+    expect(u.length).toBeGreaterThan(0);
   });
 });
 

@@ -45,7 +45,7 @@ export function ExpeditionHud() {
           )}
         </div>
         <div class="row">
-          <span style={{ width: '9px', textAlign: 'center', color: 'var(--butter)', fontSize: '10px' }}>{hud.level}</span>
+          <span style={{ width: '9px', textAlign: 'center', color: 'var(--butter)', fontSize: 'calc(10px * var(--fs))' }}>{hud.level}</span>
           <Bar value={hud.xp} max={hud.xpNext} cls="xp" width={112} />
         </div>
         <div class="row" style={{ gap: '8px', marginTop: '1px' }}>
@@ -77,7 +77,7 @@ export function ExpeditionHud() {
           </div>
         ) : (
           <div class="col" style={{ alignItems: 'center', gap: '1px' }}>
-            <div style={{ fontSize: '12px', color: 'var(--wheat)' }}>{hud.acreName}</div>
+            <div style={{ fontSize: 'calc(12px * var(--fs))', color: 'var(--wheat)' }}>{hud.acreName}</div>
             <div style={{ width: '120px', height: '3px', background: 'rgba(28,18,28,0.7)', boxShadow: '0 0 0 1px #000' }}>
               <div style={{ width: `${hud.acreProgress * 100}%`, height: '3px', background: hud.phase === 'lull' ? 'var(--leaf)' : 'var(--amber)' }} />
             </div>

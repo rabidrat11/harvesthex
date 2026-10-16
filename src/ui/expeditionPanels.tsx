@@ -344,7 +344,7 @@ export function ResultsPanel() {
               {r.weapons.slice(0, 6).map((wp) => (
                 <div class="row" style={{ gap: '3px' }}>
                   <Icon k={WEAPONS[wp.id]?.icon ?? 'ic_star'} />
-                  <div style={{ width: '82px', fontSize: '10px' }}>
+                  <div style={{ width: '82px', fontSize: 'calc(10px * var(--fs))' }}>
                     {wp.name} <span class="muted">{wp.level}</span>
                   </div>
                   <div class="grow" style={{ height: '5px', background: 'rgba(57,31,33,0.15)' }}>

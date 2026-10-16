@@ -24,12 +24,12 @@ graft produce into weapons for the next expedition. Saves locally.
 | The Marrow King | `sim/enemyAi.ts` | two phases, 9 attacks, arena shrinks at 50%, desperation spiral at 15%, death sequence, loot shower |
 | Level-ups / shop / chests | `sim/upgrades.ts` | build-aware offers, rarity, rerolls, locks, Mags's tea, risky bargains, evolutions |
 | 33 passive items | `data/items.ts` | trade-offs, evolution tags, hooks |
-| 12 classes | `data/classes.ts`, `sim/classes.ts` | each: held weapon, starter, passive rule, active skill, weakness, unlock with progress |
+| 12 classes | `data/classes.ts`, `sim/classes.ts` | each: held weapon, starter, passive rule, active skill, weakness; all open from day one |
 | Farm | `farm/farm.ts`, `scenes/FarmScene.ts` | till/plant/water/fertilise/harvest, growth from sap, quality, seed inheritance |
 | Mutation bench, crossbreeding | `farm/farm.ts` | reagents → traits; 5 named hybrids + generic gene crosses |
 | Buildings | `data/farm.ts` | pump (auto-water), bench (+upgrade), compost, smithy (repairs, expansions, tool tiers, 9 equipment pieces), archive (seeds, almanac), shrine (blessing), farmhouse (stores, kitchen) |
 | Save system | `meta/save.ts` | versioned envelope, checksum, backup slot, migration v1→v3, field validation, export/import; runs bank the moment they end; checkpoints every 20 s and at lulls are recovered after a crash or reload |
-| Results | `meta/results.ts` | defeat keeps seeds/growth + 60%; unlocks; jars come home |
+| Results | `meta/results.ts` | defeat keeps seeds/growth + 60%; rot-tier unlocks; jars come home |
 | Rendering | `render/` | one atlas, baked ground textures, pooled sprites, fx layer, telegraphs, offscreen arrows |
 | UI | `ui/` (Preact) | title, settings (4 tabs), rebinding, HUDs, all panels, keyboard navigation |
 | Audio | `audio/` | procedural sfx (60+) with voice limits; procedural music for title/farm/meadow/boss/victory |
@@ -54,6 +54,8 @@ graft produce into weapons for the next expedition. Saves locally.
 - Readability: the interface font is now Jersey 10 (Pixelify Sans's B read as G and its fi ligature as A); larger minimum sizes; outlined HUD text; emphasis by colour, no faux bold.
 - Difficulty: enemy damage x1.4, post-hit grace 0.5 s (was 0.8) and bullets no longer vanish harmlessly during it.
 - Nine new classes (12 in total).
+- Readability, second pass: interface text is now Atkinson Hyperlegible Next (a typeface designed for legibility), with Jersey 10 kept for headings and banners; Settings > Display > Interface font switches back to all-pixel text. The tiny pixel labels over Mags and the signpost became a marker (the HUD prompt says what E does).
+- All twelve classes are open from the first day (older saves too), with a 12-portrait picker on the Potting Bench.
 
 ## Known issues / next priorities
 

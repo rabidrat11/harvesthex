@@ -83,7 +83,8 @@ export class ExpeditionRenderer {
   private held!: Img;
   private hitDot!: Img;
   private overlay: Phaser.GameObjects.Graphics;
-  private labels: Phaser.GameObjects.BitmapText[] = [];
+  /** Marks over the prop the player can interact with. */
+  private marks!: Phaser.GameObjects.Graphics;
   private t = 0;
   private afterT = 0;
   private dustT = 0;
@@ -108,6 +109,7 @@ export class ExpeditionRenderer {
     this.buildObstacles();
     this.gfx = scene.add.graphics().setDepth(30);
     this.overlay = scene.add.graphics().setDepth(9500).setScrollFactor(0);
+    this.marks = scene.add.graphics().setDepth(9100);
     this.playerShadow = scene.add.image(0, 0, ATLAS, 'shadow').setDepth(40).setAlpha(0.9);
     this.held = scene.add.image(0, 0, ATLAS, F(w.run.held.def.icon));
     this.player = scene.add.image(0, 0, ATLAS, '__missing');
@@ -867,7 +869,7 @@ export class ExpeditionRenderer {
   private drawProps() {
     const w = this.w;
     const used = new Set<number>();
-    let lab = 0;
+    this.marks.clear();
     w.props.forEach((pr, i) => {
       if (!pr.active) return;
       const base = i * 3;
@@ -903,23 +905,17 @@ export class ExpeditionRenderer {
         this.gfx.strokePath();
         if (Math.random() < 0.2) this.fx.sprite('fx_sparkle', pr.x + (Math.random() - 0.5) * 30, pr.y - Math.random() * 30, { depth: 8000, tint: 0xf389f5 });
       }
-      // Interaction prompt.
+      // The interaction prompt itself is DOM text in the HUD (readable at any
+      // scale); the world only marks which prop it belongs to.
       if (w.nearProp === pr) {
-        const l = this.label(lab++);
-        l.setText(pr.kind === 'cart' ? 'E  MAGS' : 'E  GO HOME').setPosition(Math.round(pr.x), Math.round(pr.y - (pr.kind === 'cart' ? 40 : 30))).setVisible(true);
+        const y = pr.y - (pr.kind === 'cart' ? 40 : 30) + Math.sin(this.t * 6) * 1.5;
+        this.marks.fillStyle(0x000000, 1);
+        this.marks.fillTriangle(pr.x - 5, y - 5, pr.x + 5, y - 5, pr.x, y + 1);
+        this.marks.fillStyle(0xffeb57, 1);
+        this.marks.fillTriangle(pr.x - 3, y - 4, pr.x + 3, y - 4, pr.x, y - 0.5);
       }
     });
-    for (let i = lab; i < this.labels.length; i++) this.labels[i].setVisible(false);
     this.propSpr.hideFrom(used);
-  }
-
-  private label(i: number) {
-    let l = this.labels[i];
-    if (!l) {
-      l = this.scene.add.bitmapText(0, 0, 'font_small', '', 7).setOrigin(0.5, 1).setDepth(9100).setTint(0xf9e6cf);
-      this.labels[i] = l;
-    }
-    return l;
   }
 
   /** Arrows at the screen edge pointing to important things off-screen. */

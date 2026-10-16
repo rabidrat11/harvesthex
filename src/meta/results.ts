@@ -139,62 +139,9 @@ export function applyResult(p: Profile, r: RunResult): RunResult {
   return r;
 }
 
-/** How close each class is to unlocking: [current, needed]. */
-export function unlockProgress(p: Profile, cls: string): [number, number] {
-  const b = p.buildings;
-  switch (cls) {
-    case 'botanist':
-      return [p.stats.harvested, 5];
-    case 'reaper':
-      return [Math.min(1, p.almanac.enemies.knight ?? 0), 1];
-    case 'tinkerer':
-      return [(b.pump >= 1 ? 1 : 0) + (b.bench >= 1 ? 1 : 0) + (b.compost >= 1 ? 1 : 0), 3];
-    case 'apiarist':
-      return [p.stats.flowersHarvested, 3];
-    case 'rootspeaker':
-      return [Math.min(4, p.stats.deepestAcre + 1), 4];
-    case 'strawman':
-      return [Math.min(1, p.scarecrow.found), 1];
-    case 'forager':
-      return [p.stats.seedsFound, 12];
-    case 'miller':
-      return [p.stats.maxLevel, 20];
-    case 'witch':
-      return [p.almanac.traits.length, 6];
-    case 'ploughman':
-      return [p.plots[6]?.unlocked ? 1 : 0, 1];
-    case 'alchemist':
-      return [p.stats.jarsMade, 3];
-    default:
-      return [1, 1];
-  }
-}
-
-const UNLOCK_MESSAGES: Record<string, string> = {
-  botanist: 'The Botanist will join you. (Harvested 5 crops.)',
-  reaper: 'The Reaper has noticed you. (Felled a Bramble Knight.)',
-  tinkerer: 'The Tinkerer moves in: the farm is finally in working order.',
-  apiarist: 'The Apiarist follows the bees to your flowers.',
-  rootspeaker: 'The Rootspeaker felt you walk the Rot Line.',
-  strawman: 'The scarecrow climbs down off its post. The Strawman is ready.',
-  forager: 'The Forager wants to know where you find all those seeds.',
-  miller: 'The Miller is impressed by your stamina.',
-  witch: 'The Hedge Witch has heard about your mutations.',
-  ploughman: 'The Ploughman offers to work the new beds, and the meadow.',
-  alchemist: 'The Alchemist has been eyeing your jars.',
-};
-
 /** Permanent unlocks earned so far. Returns the messages for new ones. */
 export function checkUnlocks(p: Profile, r?: RunResult): string[] {
   const out: string[] = [];
-  for (const cls of Object.keys(UNLOCK_MESSAGES)) {
-    if (p.classes.unlocked.includes(cls)) continue;
-    const [have, need] = unlockProgress(p, cls);
-    if (have >= need) {
-      p.classes.unlocked.push(cls);
-      out.push(UNLOCK_MESSAGES[cls]);
-    }
-  }
   if (r?.outcome === 'victory') {
     if (p.tiers.unlocked < Math.min(3, r.tier + 1)) {
       p.tiers.unlocked = Math.min(3, r.tier + 1);

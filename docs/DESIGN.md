@@ -35,23 +35,25 @@ seeds. Full expedition: ≈13–16 minutes.
 
 ## Systems at a glance
 
-- **Classes** (12): each has its own held weapon, starting cultivar, a rule
-  that changes how the run plays, a right-click skill and a real weakness.
+- **Classes** (12), all available from the first day: each has its own held
+  weapon, starting cultivar, a rule that changes how the run plays, a
+  right-click skill and a real weakness. Chosen at the Potting Bench or in the
+  character panel (Tab).
 
-  | Class | Holds | Passive | Skill | Weakness | Unlock |
-  |---|---|---|---|---|---|
-  | Fieldhand | Seed Sling | +5% damage per crop family fielded | Straw Decoy | weak crits | start |
-  | Botanist | Spore Puffer | traits 50% stronger; poisoned foes burst into spores | Overgrowth (root) | fragile, poor physical | harvest 5 crops |
-  | Reaper | Old Scythe | melee kills heal; scythe executes below 12% | Reaping Dash | low health, poor projectiles | fell a Bramble Knight |
-  | Tinkerer | Rivet Gun | a sprinkler turret every 9 s (max 3) | Overclock | own weapons -15% | mend pump, bench, compost |
-  | Apiarist | Bee Smoker | +2 bees per hive, flowers +20%, summons +20% | The Swarm | non-summons -20% | harvest 3 flowers |
-  | Rootspeaker | Root Staff | stand still: +35% damage, +5 armour | Bramble Ring | slow, slow dash | reach the Rot Line |
-  | Strawman | Pitchfork | bursts into needles and a blast when hurt | Scare | -20% damage, never crits | the scarecrow's secret |
-  | Forager | Walking Stick | truffle patches every 40 s; seeds +50% | Gather | -5% damage, less health | bring home 12 seeds |
-  | Miller | Grain Scoop | every 150 hits: +1% attack speed (to +30%) | Winnow (clears shots) | -25% per hit | reach level 20 |
-  | Hedge Witch | Moonberry Staff | every 6th hit hexes: +30% damage taken, motes on death | Moonlit Step | -3 armour, less health | discover 6 traits |
-  | Ploughman | Plough Blade | dashing ploughs a damaging furrow; +15% physical | Shoulder Charge | slow to move and swing | clear the second row |
-  | Alchemist | Tonic Flask (fire/poison) | burning deaths spread fire; bigger blasts | Brew | less health, jars heal 30% less | seal 3 jars |
+  | Class | Holds | Passive | Skill | Weakness |
+  |---|---|---|---|---|
+  | Fieldhand | Seed Sling | +5% damage per crop family fielded | Straw Decoy | weak crits |
+  | Botanist | Spore Puffer | traits 50% stronger; poisoned foes burst into spores | Overgrowth (root) | fragile, poor physical |
+  | Reaper | Old Scythe | melee kills heal; scythe executes below 12% | Reaping Dash | low health, poor projectiles |
+  | Tinkerer | Rivet Gun | a sprinkler turret every 9 s (max 3) | Overclock | own weapons -15% |
+  | Apiarist | Bee Smoker | +2 bees per hive, flowers +20%, summons +20% | The Swarm | non-summons -20% |
+  | Rootspeaker | Root Staff | stand still: +35% damage, +5 armour | Bramble Ring | slow, slow dash |
+  | Strawman | Pitchfork | bursts into needles and a blast when hurt | Scare | -20% damage, never crits |
+  | Forager | Walking Stick | truffle patches every 40 s; seeds +50% | Gather | -5% damage, less health |
+  | Miller | Grain Scoop | every 150 hits: +1% attack speed (to +30%) | Winnow (clears shots) | -25% per hit |
+  | Hedge Witch | Moonberry Staff | every 6th hit hexes: +30% damage taken, motes on death | Moonlit Step | -3 armour, less health |
+  | Ploughman | Plough Blade | dashing ploughs a damaging furrow; +15% physical | Shoulder Charge | slow to move and swing |
+  | Alchemist | Tonic Flask (fire/poison) | burning deaths spread fire; bigger blasts | Brew | less health, jars heal 30% less |
 - **Weapons**: 12 behaviours: shooter, lance, lobber, artillery, orbit,
   sweep, summoner, swarm, briar, puffer, storm, crown boomerang.
 - **Synergies**: poison + fire detonates; chill → freeze → physical shatter;

@@ -87,5 +87,5 @@ See `PROGRESS.md` for the current state and `docs/DESIGN.md` for the design.
 
 The Cute Fantasy Icons (free version) are by Kenmi, for **non-commercial use
 only, with no redistribution**; they are used in the game but not distributed
-in this repository. Jersey 10 is SIL OFL. Everything else was made for this
-project.
+in this repository. Atkinson Hyperlegible Next (Braille Institute) and
+Jersey 10 are SIL OFL. Everything else was made for this project.

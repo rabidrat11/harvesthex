@@ -118,6 +118,7 @@ export function SettingsPanel() {
     (s as Settings)[k] = v;
     game.saveSettings();
     if (k === 'scaling') (window as unknown as { relayout: () => void }).relayout?.();
+    if (k === 'uiFont') document.body.classList.toggle('font-pixel', v === 'pixel');
     force((n) => n + 1);
   };
   const slider = (k: 'master' | 'music' | 'sfx' | 'screenShake') => (
@@ -153,6 +154,9 @@ export function SettingsPanel() {
           <div class="col">
             <Row label="Scaling" desc="Pixel-perfect keeps every pixel square; fill uses the whole window.">
               <Seg value={s.scaling} options={[['pixel', 'Pixel-perfect'], ['fit', 'Fill window']]} onChange={(v) => set('scaling', v)} />
+            </Row>
+            <Row label="Interface font" desc="Clear is easiest to read; pixel matches the art.">
+              <Seg value={s.uiFont} options={[['clear', 'Clear'], ['pixel', 'Pixel']]} onChange={(v) => set('uiFont', v)} />
             </Row>
             <Row label={`Screen shake ${Math.round(s.screenShake * 100)}%`}>{slider('screenShake')}</Row>
             <Row label="Damage numbers">
@@ -316,7 +320,9 @@ export function CreditsPanel() {
           Items, ores, armour, tools, food and potions use the <b>Cute Fantasy Icons (free version)</b> pack by Kenmi. Licence: non-commercial use, modification allowed, no redistribution. This build is for personal, non-commercial play.
         </p>
         <h3>Fonts</h3>
-        <p class="small">Jersey 10 by Sarah Cadigan-Fried, under the SIL Open Font License.</p>
+        <p class="small">
+          Atkinson Hyperlegible Next by the Braille Institute, and Jersey 10 by Sarah Cadigan-Fried, both under the SIL Open Font License.
+        </p>
         <h3>Engine</h3>
         <p class="small">Phaser 4 (MIT), Preact (MIT), built with Vite and TypeScript.</p>
         <h3>Palette</h3>

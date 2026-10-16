@@ -49,6 +49,8 @@ export interface Settings {
   reducedEffects: boolean;
   intensity: 'gentle' | 'standard';
   scaling: 'pixel' | 'fit';
+  /** Interface text: a clear sans-serif, or the pixel face that matches the art. */
+  uiFont: 'clear' | 'pixel';
   showHitbox: boolean;
   quality: 'high' | 'low';
   keys: Record<Action, string[]>;
@@ -86,6 +88,7 @@ export function defaultSettings(): Settings {
     reducedEffects: false,
     intensity: 'standard',
     scaling: 'pixel',
+    uiFont: 'clear',
     showHitbox: true,
     quality: 'high',
     keys: structuredClone(DEFAULT_KEYS),
@@ -112,6 +115,7 @@ export function loadSettings(): Settings {
         if (Array.isArray(v) && v.every((x) => typeof x === 'string')) out.keys[a] = v as string[];
       }
     }
+    if (out.uiFont !== 'clear' && out.uiFont !== 'pixel') out.uiFont = d.uiFont;
     for (const k of ['master', 'music', 'sfx', 'screenShake'] as const) out[k] = Math.max(0, Math.min(1, Number(out[k]) || 0));
     return out;
   } catch {

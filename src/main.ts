@@ -1,3 +1,6 @@
+import '@fontsource/atkinson-hyperlegible-next/400.css';
+import '@fontsource/atkinson-hyperlegible-next/400-italic.css';
+import '@fontsource/atkinson-hyperlegible-next/700.css';
 import '@fontsource/jersey-10/400.css';
 import './ui/styles.css';
 import Phaser from 'phaser';
@@ -29,6 +32,7 @@ const phaser = new Phaser.Game({
   scene: [BootScene, TitleScene, FarmScene, ExpeditionScene],
 });
 
+document.body.classList.toggle('font-pixel', game.settings.uiFont === 'pixel');
 render(h(App, {}), document.getElementById('ui')!);
 
 // Integer scaling keeps every pixel square; 'fit' fills the window instead.

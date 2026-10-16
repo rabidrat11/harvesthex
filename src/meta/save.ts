@@ -5,6 +5,7 @@
 
 import { hashString } from '../core/rng';
 import { newProfile, makePlots, SAVE_VERSION, type Profile } from './profile';
+import { CLASS_ORDER } from '../data/classes';
 
 const KEY = 'harvesthex.save';
 const BACKUP = 'harvesthex.save.bak';
@@ -118,9 +119,9 @@ export function validate(raw: Record<string, unknown>): Profile {
   }
   if (!fresh.some((x) => x.unlocked)) for (let i = 0; i < 6; i++) fresh[i].unlocked = true;
   p.plots = fresh;
-  p.classes.unlocked = strArr(p.classes.unlocked);
-  if (!p.classes.unlocked.includes('fieldhand')) p.classes.unlocked.unshift('fieldhand');
-  if (!p.classes.unlocked.includes(p.classes.selected)) p.classes.selected = 'fieldhand';
+  // Older saves locked most classes behind goals; every class is open now.
+  p.classes.unlocked = [...CLASS_ORDER];
+  if (!CLASS_ORDER.includes(p.classes.selected)) p.classes.selected = 'fieldhand';
   p.tiers.unlocked = Math.max(1, Math.min(3, Math.floor(num(p.tiers.unlocked, 1))));
   p.tiers.selected = Math.max(1, Math.min(p.tiers.unlocked, Math.floor(num(p.tiers.selected, 1))));
   if (!Array.isArray(p.loadout.grafts) || p.loadout.grafts.length !== 5) p.loadout.grafts = [null, null, null, null, null];

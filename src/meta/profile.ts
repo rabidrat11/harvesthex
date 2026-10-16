@@ -4,6 +4,7 @@
 
 import type { Quality, TraitId } from '../data/types';
 import type { RunResult } from './results';
+import { CLASS_ORDER } from '../data/classes';
 
 export interface SeedStack {
   species: string;
@@ -145,7 +146,8 @@ export function newProfile(): Profile {
     buildings: { farmhouse: 1, potting: 1, archive: 1, smithy: 1, pump: 0, bench: 0, compost: 0 },
     equipment: { owned: [], equipped: { head: null, body: null, feet: null, charm: null } },
     heldTiers: { fieldhand: 0, botanist: 0, reaper: 0 },
-    classes: { unlocked: ['fieldhand'], selected: 'fieldhand' },
+    // Every farmer is available from the first day.
+    classes: { unlocked: [...CLASS_ORDER], selected: 'fieldhand' },
     tiers: { unlocked: 1, selected: 1 },
     almanac: { species: ['pea', 'carrot', 'turnip'], traits: [], hybrids: [], evolutions: [], enemies: {}, weapons: ['seed_sling', 'pea_repeater'] },
     loadout: { grafts: [null, null, null, null, null], jars: { jam: 2 } },

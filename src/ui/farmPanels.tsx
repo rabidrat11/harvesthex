@@ -18,7 +18,6 @@ import { addSeeds, hasMaterials, payMaterials, type ProduceStack, type EquipSlot
 import { compostProduce, compostSeed, crossbreed, mutateCrop, plotStage, preserve, clampLoadoutJars } from '../farm/farm';
 import { Rng } from '../core/rng';
 import { describeMods, fmtStat, STAT_INFO, type StatKey } from '../data/stats';
-import { unlockProgress } from '../meta/results';
 import { hasFrame } from '../render/textures';
 import { fmtTime } from '../core/math';
 import type { FarmScene } from '../scenes/FarmScene';
@@ -249,6 +248,9 @@ function IntroPanel() {
         <p class="speech">
           She left you three tilled beds, a handful of peas, and a note in the almanac: <i>“Plant everything. Feed it what you find out there. Trust the turnip.”</i>
         </p>
+        <p class="speech">
+          Twelve farmers can work this land, each fighting their own way. Choose who goes out at the <b>Potting Bench</b>, or press <b>Tab</b> to compare them.
+        </p>
         <div class="small muted">
           <b>WASD</b> to walk · <b>mouse</b> to tend the beds · <b>E</b> to use buildings
         </div>
@@ -311,39 +313,40 @@ function portraitOf(id: string) {
   return hasFrame(k) ? k : `hero_${id}_down_idle_0`;
 }
 
+/** All twelve farmers as a portrait grid. The star marks who goes out today. */
+function ClassGrid({ cols, size, value, onPick, onHover }: { cols: number; size: number; value: string; onPick: (id: string) => void; onHover?: (id: string) => void }) {
+  const p = game.profile!;
+  return (
+    <div class="grid" style={{ gridTemplateColumns: `repeat(${cols}, ${size}px)`, gap: '2px', alignContent: 'start' }}>
+      {CLASS_ORDER.map((id) => (
+        <button
+          class={`itemslot slot ${value === id ? 'sel' : ''}`}
+          data-nav
+          style={{ width: `${size}px`, height: `${size}px` }}
+          title={`${CLASSES[id].name}: ${CLASSES[id].blurb}`}
+          onClick={() => onPick(id)}
+          onFocus={() => onHover?.(id)}
+        >
+          <Icon k={portraitOf(id)} scale={size >= 34 ? 0.8 : 0.65} />
+          {p.classes.selected === id && <span class="q">{'\u2605'}</span>}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 function CharacterPanel() {
   const p = game.profile!;
   useUi((s) => s.version);
   const [sel, setSel] = useState(p.classes.selected);
   const c = CLASSES[sel];
-  const unlocked = p.classes.unlocked.includes(sel);
   const stats = computedBase(sel);
-  const [have, need] = unlockProgress(p, sel);
   const show: StatKey[] = ['maxHp', 'regen', 'armour', 'moveSpeed', 'attackSpeed', 'damage', 'critChance', 'critDamage', 'physical', 'nature', 'arcane', 'elemental', 'summonPower', 'statusDuration', 'area', 'luck', 'sapYield', 'projCount'];
   const shown = show.filter((k) => k === 'maxHp' || k === 'armour' || Math.abs(stats[k] ?? 0) > 1e-6);
   return (
     <Frame title="Who goes out today?" width={612}>
       <div class="row" style={{ gap: '4px', marginTop: '3px', alignItems: 'stretch' }}>
-        <div class="grid" style={{ gridTemplateColumns: 'repeat(4, 34px)', gap: '2px', alignContent: 'start' }}>
-          {CLASS_ORDER.map((id) => {
-            const cc = CLASSES[id];
-            const ok = p.classes.unlocked.includes(id);
-            return (
-              <button
-                class={`itemslot slot ${sel === id ? 'sel' : ''}`}
-                data-nav
-                style={{ width: '34px', height: '34px', opacity: ok ? 1 : 0.5, filter: ok ? undefined : 'grayscale(0.8)' }}
-                title={cc.title}
-                onClick={() => setSel(id)}
-                onFocus={() => setSel(id)}
-              >
-                <Icon k={portraitOf(id)} scale={0.8} />
-                {p.classes.selected === id && <span class="q">{'\u2605'}</span>}
-                {!ok && <span class="n"><Icon k="ic_lock" /></span>}
-              </button>
-            );
-          })}
-        </div>
+        <ClassGrid cols={4} size={34} value={sel} onPick={setSel} onHover={setSel} />
         <div class="parch grow" style={{ padding: '0 4px 3px' }}>
           <div class="row" style={{ alignItems: 'flex-start' }}>
             <Icon k={portraitOf(sel)} />
@@ -367,12 +370,7 @@ function CharacterPanel() {
           <div class="small bad">
             <b>Weakness:</b> {c.weakness}
           </div>
-          {!unlocked && c.unlock && (
-            <div class="small" style={{ marginTop: '2px' }}>
-              <Icon k="ic_lock" /> <b>To unlock:</b> {c.unlock.desc} <span class="pill">{Math.min(have, need)}/{need}</span>
-            </div>
-          )}
-          {unlocked && p.classes.selected !== sel && (
+          {p.classes.selected !== sel && (
             <div style={{ marginTop: '3px' }}>
               <Btn
                 class="primary"
@@ -385,7 +383,7 @@ function CharacterPanel() {
               </Btn>
             </div>
           )}
-          {unlocked && p.classes.selected === sel && <div class="small good" style={{ marginTop: '2px' }}>Going out today.</div>}
+          {p.classes.selected === sel && <div class="small good" style={{ marginTop: '2px' }}>Going out today.</div>}
         </div>
         <div class="parch" style={{ flex: '0 0 140px', padding: '0 4px 2px' }}>
           <h3>Starting stats</h3>
@@ -463,16 +461,24 @@ function PottingPanel() {
     <Frame title="Potting Bench" sub="Graft what you have grown into your satchel. Each graft fights beside you as a weapon, starting at its quality level, carrying its mutations." width={600}>
       <div class="row" style={{ gap: '4px', alignItems: 'flex-start', marginTop: '3px' }}>
         <div class="parch" style={{ flex: '0 0 200px', padding: '0 4px 3px' }}>
-          <h3>Going out</h3>
-          <div class="row">
-            <Icon k={portraitOf(cls.id)} />
-            <div class="col" style={{ gap: 0 }}>
-              <b>{cls.name}</b>
-              <button class="linkbtn small" data-nav onClick={() => ui.push('character')}>
-                change class or gear
-              </button>
-            </div>
+          <h3>Who goes out ({CLASS_ORDER.length} farmers)</h3>
+          <ClassGrid
+            cols={6}
+            size={30}
+            value={cls.id}
+            onPick={(id) => {
+              p.classes.selected = id;
+              game.sfx('ui_select', 0.6);
+              refresh();
+            }}
+          />
+          <div class="row" style={{ marginTop: '2px', justifyContent: 'space-between' }}>
+            <b>{cls.name}</b>
+            <button class="linkbtn small" data-nav onClick={() => ui.push('character')}>
+              stats and gear
+            </button>
           </div>
+          <div class="small">{cls.blurb}</div>
           <div class="small" style={{ marginTop: '2px' }}>
             <Icon k={WEAPONS[cls.held].icon} /> {WEAPONS[cls.held].name} (held, level {1 + Math.min(3, p.heldTiers[cls.id] ?? 0)})
           </div>
