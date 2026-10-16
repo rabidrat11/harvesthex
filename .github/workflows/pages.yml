@@ -34,8 +34,9 @@ jobs:
         env:
           CF_ICONS_B64: ${{ secrets.CF_ICONS_B64 }}
         run: |
+          mkdir -p public/assets
           if [ -n "$CF_ICONS_B64" ]; then
-            echo "$CF_ICONS_B64" | base64 -d > public/assets/cf-icons-16.png
+            printf '%s' "$CF_ICONS_B64" | base64 -d > public/assets/cf-icons-16.png
             echo "Icon sheet added."
           else
             echo "::warning::CF_ICONS_B64 secret not set; icons will show as markers."
