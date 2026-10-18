@@ -119,7 +119,7 @@ describe('Reaper', () => {
     w.player.hp = 50;
     const e = dummy(w, 20, 0, 5);
     hitEnemy(w, e, 100, { weapon: w.run.held, type: 'physical', canCrit: false });
-    expect(w.player.hp).toBeCloseTo(51, 5);
+    expect(w.player.hp).toBeCloseTo(52, 5);
   });
 
   it('the scythe reaps anything below 12% outright, through the real swing', () => {
@@ -247,9 +247,10 @@ describe('Strawman', () => {
   it('plenty of health, and it grows back', () => {
     const w = fresh('strawman');
     expect(w.run.stats.maxHp).toBeGreaterThan(140);
+    expect(w.run.stats.regen).toBeGreaterThan(0);
     w.player.hp = 100;
     run(w, 2);
-    expect(w.player.hp).toBeGreaterThan(102);
+    expect(w.player.hp - 100).toBeCloseTo(w.run.stats.regen * 2, 1);
   });
 });
 

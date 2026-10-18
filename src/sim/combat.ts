@@ -407,9 +407,9 @@ export function killEnemy(w: World, e: Enemy, wi: WeaponInstance | null, o?: Hit
   // On-kill hooks.
   if (wi?.hasTrait('infested') && !o?.mite && w.rng.chance(0.25 * wi.traitPower)) w.spawnMite(e.x, e.y, wi);
   if (w.run.cls.id === 'reaper' && wi && (wi.def.tags.includes('melee') || o?.executed)) {
-    healPlayer(w, 1, false, 4);
+    healPlayer(w, 2, false, 4);
   }
-  if (w.run.cls.id === 'botanist' && e.poisonT > 0) spawnSporeCloud(w, e.x, e.y, 18, 1.5, 3 * (1 + w.run.stats.nature), null);
+  if (w.run.cls.id === 'botanist' && e.poisonT > 0) spawnSporeCloud(w, e.x, e.y, 24, 1.5, 5 * (1 + w.run.stats.nature), null);
   if (o?.executed) w.fx({ type: 'execute', x: e.x, y: e.y - 6 });
   onKill(w, e);
 

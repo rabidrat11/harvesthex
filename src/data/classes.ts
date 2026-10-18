@@ -61,7 +61,7 @@ export const CLASSES: Record<string, ClassDef> = {
     title: 'Botanist',
     held: 'spore_puffer',
     starter: 'mushroom_choir',
-    base: { maxHp: 82, armour: 0, moveSpeed: -0.04, statusDuration: 0.25, nature: 0.1, physical: -0.25 },
+    base: { maxHp: 94, armour: 0, moveSpeed: -0.04, statusDuration: 0.25, nature: 0.1, physical: -0.25 },
     passive: {
       name: 'Cross-Pollination',
       desc: 'Mutation traits on your weapons are 50% stronger. Poisoned enemies burst into spores when they die.',
@@ -84,10 +84,10 @@ export const CLASSES: Record<string, ClassDef> = {
     title: 'Reaper',
     held: 'old_scythe',
     starter: 'thorn_whip',
-    base: { maxHp: 76, armour: -1, moveSpeed: 0.08, critChance: 0.06 },
+    base: { maxHp: 86, armour: -1, moveSpeed: 0.08, critChance: 0.06 },
     passive: {
       name: 'Last Harvest',
-      desc: 'Melee kills restore 1 health. The scythe reaps any enemy below 12% health outright.',
+      desc: 'Melee kills restore 2 health. The scythe reaps any enemy below 12% health outright.',
     },
     weakness: 'Brittle: low health and armour, and projectile weapons deal 30% less.',
     active: {
@@ -143,7 +143,7 @@ export const CLASSES: Record<string, ClassDef> = {
     title: 'Rootspeaker',
     held: 'root_staff',
     starter: 'briar_wall',
-    base: { maxHp: 112, armour: 4, moveSpeed: -0.12, knockback: 0.5, dashCooldown: -0.4 },
+    base: { maxHp: 112, armour: 3, moveSpeed: -0.12, knockback: 0.5, dashCooldown: -0.4 },
     passive: {
       name: 'Deep Roots',
       desc: 'Stand still for a moment and you take root: +35% damage and +5 armour until you move.',
@@ -161,7 +161,7 @@ export const CLASSES: Record<string, ClassDef> = {
     title: 'Strawman',
     held: 'pitchfork',
     starter: 'sunflower_halo',
-    base: { maxHp: 145, regen: 1.2, critChance: -1, damage: -0.2 },
+    base: { maxHp: 145, regen: 0.9, critChance: -1, damage: -0.2 },
     passive: {
       name: 'Stuffed',
       desc: 'Every time you are hurt you burst: straw needles fly out and the blast hits for a third of your max health. Plenty of health, and it grows back.',
