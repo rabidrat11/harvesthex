@@ -50,6 +50,8 @@ export function plant(pr: Profile, p: Plot, seedIndex: number): ActionResult {
   const s = takeSeed(pr, seedIndex);
   if (!s) return { ok: false, msg: 'No seeds of that kind left.' };
   p.crop = { species: s.species, traits: [...s.traits], growth: 0, fertilised: false, dryDays: 0, blessed: false, plantedDay: pr.day };
+  // The mended pump waters every planted plot, the new ones included.
+  if (pr.buildings.pump >= 1) p.watered = true;
   pr.stats.planted++;
   return { ok: true };
 }

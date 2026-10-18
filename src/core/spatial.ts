@@ -62,4 +62,9 @@ export class SpatialGrid<T extends HasPos> {
     this.marks.set(o, this.stamp);
     return false;
   }
+
+  /** Whether `seen` has marked this object in the current stamp, without marking it. */
+  marked(o: T): boolean {
+    return this.marks.get(o) === this.stamp;
+  }
 }

@@ -58,11 +58,11 @@ export function playerShot(w: World, x: number, y: number, a: number, speed: num
 }
 
 /** Seeking arcane motes (the Witch's hex, the Moonberry Staff). */
-export function spawnMotes(w: World, x: number, y: number, n: number, dmg: number, pierce = 0) {
+export function spawnMotes(w: World, x: number, y: number, n: number, dmg: number, pierce = 0, weapon: Projectile['weapon'] = null) {
   const base = w.rng.angle();
   for (let i = 0; i < n; i++) {
     const a = base + (TAU * i) / n;
-    playerShot(w, x, y, a, 150, dmg, 'p_moon', { homing: 6, life: 1.6, dmgType: 'arcane', scale: 0.7, radius: 3, pierce, canCrit: true });
+    playerShot(w, x, y, a, 150, dmg, 'p_moon', { homing: 6, life: 1.6, dmgType: 'arcane', scale: 0.7, radius: 3, pierce, canCrit: true, weapon });
   }
 }
 
@@ -295,7 +295,7 @@ export function useClassActive(w: World, id: string): boolean {
   switch (id) {
     case 'overclock': {
       w.overclockT = 4;
-      p.buffT = 4;
+      p.buffT = Math.max(p.buffT, 4);
       p.buffAs += 0.4;
       w.run.tempMods.attackSpeed = (w.run.tempMods.attackSpeed ?? 0) + 0.4;
       w.run.recompute();
@@ -371,8 +371,8 @@ export function useClassActive(w: World, id: string): boolean {
       for (const e of w.queryEnemies(p.x, p.y, r)) {
         if (Math.abs(wrapAngle(angleTo(p.x, p.y, e.x, e.y) - p.aim)) > arc / 2) continue;
         const a = angleTo(p.x, p.y, e.x, e.y);
-        e.kx += Math.cos(a) * 320 * (1 - e.def.kbResist);
-        e.ky += Math.sin(a) * 320 * (1 - e.def.kbResist);
+        e.kx += Math.cos(a) * 750 * (1 - e.def.kbResist);
+        e.ky += Math.sin(a) * 750 * (1 - e.def.kbResist);
         hitEnemy(w, e, w.run.held.damage() * 1.5, { type: 'physical', canCrit: false, fromX: p.x, fromY: p.y });
       }
       for (const b of w.bullets.items) {
@@ -417,7 +417,7 @@ export function useClassActive(w: World, id: string): boolean {
         healPlayer(w, w.run.stats.maxHp * 0.25, true, 999);
         w.emit({ type: 'message', text: 'A healing draught.', tone: 'good' });
       } else if (r === 1) {
-        p.buffT = 6;
+        p.buffT = Math.max(p.buffT, 6);
         p.buffAs += 0.5;
         w.run.tempMods.attackSpeed = (w.run.tempMods.attackSpeed ?? 0) + 0.5;
         w.run.recompute();

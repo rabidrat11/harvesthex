@@ -17,6 +17,8 @@ import { CROPS } from '../data/crops';
 import { WEAPONS } from '../data/weapons';
 import { TRAITS } from '../data/traits';
 import { clamp } from '../core/math';
+import { keyLabel } from '../meta/settings';
+import { MENU_ARM_MS } from '../ui/menuArm';
 import type { TraitId } from '../data/types';
 
 export class ExpeditionScene extends Phaser.Scene {
@@ -29,6 +31,17 @@ export class ExpeditionScene extends Phaser.Scene {
   private shopForLull = -1;
   private levelOffers: Offer[] = [];
   private chestOffers: Offer[] = [];
+  /** Chests picked up while another choice was open, shown one after another. */
+  private chestsWaiting = 0;
+  /** When the current panel opened: a choice made within a blink is a stray click or key. */
+  private panelAt = 0;
+  private onBlur = () => {
+    // Alt-tab or a hidden tab mid-fight: pause rather than play on unseen.
+    if (!this.paused && !this.ended && this.scene.isActive()) this.openPanel('pause');
+  };
+  private onVisibility = () => {
+    if (document.hidden) this.onBlur();
+  };
   private endT = -1;
   private ended = false;
   /** Set once the player has chosen to go home, so a second press does nothing. */
@@ -80,8 +93,11 @@ export class ExpeditionScene extends Phaser.Scene {
     ui.closeAll();
     this.pushHud(true);
     this.events.once('shutdown', () => this.shutdown());
+    this.chestsWaiting = 0;
+    window.addEventListener('blur', this.onBlur);
+    document.addEventListener('visibilitychange', this.onVisibility);
     if (game.profile && game.profile.stats.runs === 0) {
-      const k = (a: 'dash' | 'consumable') => game.settings.keys[a][0].replace('Key', '');
+      const k = (a: 'dash' | 'consumable') => keyLabel(game.settings.keys[a][0]);
       const tips = [
         'WASD to move. Your crops fight by themselves.',
         'Aim with the mouse; hold the left button to use your held weapon.',
@@ -95,6 +111,8 @@ export class ExpeditionScene extends Phaser.Scene {
   }
 
   private shutdown() {
+    window.removeEventListener('blur', this.onBlur);
+    document.removeEventListener('visibilitychange', this.onVisibility);
     bridge.expedition = null;
     this.r?.destroy();
     (window as unknown as { __HX_world?: World }).__HX_world = undefined;
@@ -116,14 +134,12 @@ export class ExpeditionScene extends Phaser.Scene {
       console.error('[expedition] frame error', err);
       if (++this.errors >= 5 && !this.ended) {
         this.ended = true;
-        try {
-          this.bank(checkpointResult(this.w, this.w.phase === 'lull'));
-        } catch (e2) {
-          console.error('[expedition] could not bank the run', e2);
-        }
         this.endT = 0;
+        this.bankSafely(this.w.phase === 'lull');
         ui.toast('Something went wrong out there. Mags brought you, and your haul, home.', 'warn');
       }
+      // However the end went wrong, an ended run always reaches its results.
+      if (this.ended && this.endT < 0 && !this.leaving && ui.get().panel !== 'results') this.endT = 0;
       if (this.ended && this.errors >= 5) {
         game.input.endFrame();
         if (ui.get().panel !== 'results' && this.banked) this.openPanel('results', { result: this.banked });
@@ -199,9 +215,10 @@ export class ExpeditionScene extends Phaser.Scene {
 
     if (!this.ended && (w.phase === 'victory' || w.phase === 'defeat' || w.phase === 'extracted')) {
       this.ended = true;
-      // Bank immediately, before any screen: the results are already saved.
-      this.bank(buildResult(w));
+      // The results come up after a beat, whatever happens while banking.
       this.endT = w.phase === 'defeat' ? 1.8 : w.phase === 'victory' ? 0.6 : 0.4;
+      // Bank immediately, before any screen: the results are already saved.
+      this.bankSafely(false);
       if (w.phase === 'victory') {
         game.audio.playMusic('victory');
         this.r.lowerArena();
@@ -242,7 +259,7 @@ export class ExpeditionScene extends Phaser.Scene {
     let sx = this.camX;
     let sy = this.camY;
     const shake = w.shakeAmt * game.settings.screenShake * (game.settings.reducedEffects ? 0.4 : 1);
-    if (shake > 0.2 && w.shakeT > 0) {
+    if (shake > 0.2 && w.shakeT > 0 && !this.paused) {
       sx += Math.round((Math.random() - 0.5) * 2 * shake);
       sy += Math.round((Math.random() - 0.5) * 2 * shake);
     }
@@ -261,6 +278,8 @@ export class ExpeditionScene extends Phaser.Scene {
     const w = this.w;
     switch (e.type) {
       case 'acre':
+        // The lull's checkpoint banked everything; out in the field again, it must not.
+        this.checkpoint(false);
         ui.banner(e.name, e.intro, 'acre');
         game.audio.music?.setIntensity(Math.min(2, e.index));
         break;
@@ -275,6 +294,7 @@ export class ExpeditionScene extends Phaser.Scene {
         game.audio.duck(0.5, 1.2);
         break;
       case 'boss':
+        this.checkpoint(false);
         this.r.raiseArena();
         ui.banner(e.name, 'Sovereign of the Royal Patch', 'boss');
         game.audio.playMusic('boss');
@@ -297,7 +317,11 @@ export class ExpeditionScene extends Phaser.Scene {
         break;
       case 'chest':
         // After the run is over a prize would be meaningless: never block the results with one.
-        if (!this.ended && w.phase !== 'victory' && w.phase !== 'extracted' && w.phase !== 'defeat') this.openChest();
+        if (!this.ended && w.phase !== 'victory' && w.phase !== 'extracted' && w.phase !== 'defeat') {
+          // A second chest while a choice is open waits its turn.
+          if (this.paused) this.chestsWaiting++;
+          else this.openChest();
+        }
         break;
       case 'pickup': {
         if (e.kind === 'seed') {
@@ -325,6 +349,7 @@ export class ExpeditionScene extends Phaser.Scene {
   // Panels
 
   private openPanel(panel: Parameters<typeof ui.open>[0], data: unknown = null) {
+    this.panelAt = performance.now();
     game.input.clear();
     game.audio.setMuffled(true);
     ui.open(panel, data);
@@ -336,7 +361,17 @@ export class ExpeditionScene extends Phaser.Scene {
     game.input.clear();
     // A moment of grace so a menu never ends in an unseen hit.
     this.w.player.iframes = Math.max(this.w.player.iframes, 0.35);
-    if (this.w.run.pendingLevels > 0 && !this.ended && this.w.phase !== 'victory') this.openLevelUp();
+    if (this.ended || this.w.phase === 'victory') return;
+    if (this.w.run.pendingLevels > 0) this.openLevelUp();
+    else if (this.chestsWaiting > 0) {
+      this.chestsWaiting--;
+      this.openChest();
+    }
+  }
+
+  /** A choice may only be made in its own panel, and not in the instant it opened. */
+  private canChoose(panel: string): boolean {
+    return ui.get().panel === panel && performance.now() - this.panelAt >= MENU_ARM_MS;
   }
 
   private openLevelUp() {
@@ -363,7 +398,8 @@ export class ExpeditionScene extends Phaser.Scene {
     const evos = w.run.weapons.map((wi) => ({ wi, e: wi.evolution(w.run) })).filter((x) => x.e);
     const offers: Offer[] = [];
     if (evos.length) {
-      for (const x of evos) offers.push({ kind: 'evolve', weapon: x.wi, into: x.e!.into });
+      // Up to four at once (all that fit); the rest wait for the next chest.
+      for (const x of evos.slice(0, 4)) offers.push({ kind: 'evolve', weapon: x.wi, into: x.e!.into });
     } else {
       const seen = new Set<string>();
       const n = 3 + (w.run.hookValue('extraChest') > 0 ? 1 : 0);
@@ -384,7 +420,7 @@ export class ExpeditionScene extends Phaser.Scene {
     bridge.expedition = {
       chooseOffer: (i: number) => {
         const o = this.levelOffers[i];
-        if (!o) return;
+        if (!o || !this.canChoose('levelup')) return;
         applyOffer(this.w, o);
         if (o.kind === 'evolve') ui.toast(`${WEAPONS[o.into].name}!`, 'legendary', WEAPONS[o.into].icon);
         this.w.consumeLevel();
@@ -452,6 +488,7 @@ export class ExpeditionScene extends Phaser.Scene {
         this.w.extract();
       },
       chestTake: (i: number) => {
+        if (!this.canChoose('chest')) return;
         const o = this.chestOffers[i];
         if (o) {
           if (o.kind === 'evolve') {
@@ -504,11 +541,34 @@ export class ExpeditionScene extends Phaser.Scene {
   private bank(result: RunResult) {
     if (this.banked) return;
     this.banked = result;
-    if (game.profile) {
-      applyResult(game.profile, result);
-      game.save();
+    try {
+      if (game.profile) {
+        applyResult(game.profile, result);
+        game.save();
+      }
+    } finally {
+      // Even if banking failed (the last checkpoint stays saved and is recovered
+      // on the farm), the results screen must have something to show.
+      ui.set({ results: result });
     }
-    ui.set({ results: result });
+  }
+
+  /** Bank the run as it stands: its true outcome if it has ended, else a checkpoint. */
+  private bankSafely(safe: boolean) {
+    const w = this.w;
+    const over = w.phase === 'victory' || w.phase === 'defeat' || w.phase === 'extracted';
+    try {
+      this.bank(over ? buildResult(w) : checkpointResult(w, safe));
+    } catch (e) {
+      console.error('[expedition] could not bank the run', e);
+      if (!this.banked) {
+        try {
+          this.bank(checkpointResult(w, safe));
+        } catch (e2) {
+          console.error('[expedition] could not bank a checkpoint either', e2);
+        }
+      }
+    }
   }
 
   private finishRun() {

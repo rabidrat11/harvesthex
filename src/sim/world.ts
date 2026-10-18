@@ -3,6 +3,7 @@
 // `fxQueue` (sounds and particles) and `events` (UI moments).
 
 import { Rng } from '../core/rng';
+import { ITEMS } from '../data/items';
 import { TAU, angleTo, approach, clamp, dist, dist2 } from '../core/math';
 import { SpatialGrid } from '../core/spatial';
 import { ENEMIES } from '../data/enemies';
@@ -76,6 +77,9 @@ export class Player {
   ky = 0;
   hp = 100;
   aim = 0;
+  /** The point being aimed at (the cursor, or the auto-aim target). */
+  aimX = 0;
+  aimY = 0;
   facingAngle = Math.PI / 2;
   moving = false;
   dashT = 0;
@@ -162,8 +166,8 @@ export class World {
   killsByEnemy: Record<string, number> = {};
   stats = { kills: 0, damageDealt: 0, damageTaken: 0, healed: 0, elites: 0, bosses: 0, chests: 0, dashes: 0 };
   dpsWindow: number[] = [];
+  private dpsTimes: number[] = [];
   private nextEnemyId = 1;
-  private tmpQuery: Enemy[] = [];
   /** Set by tests and the debug overlay to stop the director spawning. */
   noSpawns = false;
   // Class passives (see sim/classes.ts).
@@ -178,8 +182,8 @@ export class World {
 
   constructor(loadout: Loadout, settings: SimSettings) {
     this.rng = new Rng(loadout.seed);
-    this.regionId = loadout.region;
     const region = REGIONS[loadout.region] ?? REGIONS.meadow;
+    this.regionId = region.id;
     this.map = generateMeadow(loadout.seed, region.width, region.height);
     this.grid = new SpatialGrid(this.map.w, this.map.h, 32);
     const tier = ROT_TIERS[Math.max(0, Math.min(ROT_TIERS.length - 1, loadout.tier - 1))];
@@ -198,6 +202,7 @@ export class World {
     this.targetY = this.player.y;
     this.director = new Director(this, region);
     for (const wi of this.run.weapons) wi.rollWild(this.rng);
+    this.run.recompute();
   }
 
   // -------------------------------------------------------------------------
@@ -224,8 +229,10 @@ export class World {
     this.events.push(e);
   }
 
+  /** Enemies near a point. A fresh list each call: hits inside a loop over it may
+   *  set off explosions or chains that query again. */
   queryEnemies(x: number, y: number, r: number): Enemy[] {
-    return this.grid.query(x, y, r, this.tmpQuery, 26);
+    return this.grid.query(x, y, r, [], 26);
   }
 
   spawnEnemy(id: string, x: number, y: number, o: { instant?: boolean; kx?: number; ky?: number; elite?: boolean } = {}): Enemy | null {
@@ -268,6 +275,7 @@ export class World {
     e.bleedStacks = e.bleedPower = e.bleedT = e.rootT = e.shock = 0;
     e.dotAcc = 0;
     e.dotTick = 0.5;
+    e.dotBy = null;
     e.fearT = 0;
     e.lastHit.fill(-99);
     e.invulnerable = def.ai === 'burrower' || !!def.boss;
@@ -436,6 +444,8 @@ export class World {
       }
     }
     p.aim = Math.atan2(aimY - (p.y - 4), aimX - p.x);
+    p.aimX = aimX;
+    p.aimY = aimY;
 
     // Regeneration.
     if (s.regen > 0 && p.hp < s.maxHp) p.hp = Math.min(s.maxHp, p.hp + s.regen * dt);
@@ -482,8 +492,14 @@ export class World {
     }
 
     if (this.input.active && p.activeCd <= 0) this.useActive();
-    if (this.input.consumable) this.useConsumable();
-    if (this.input.interact && this.nearProp) this.interact(this.nearProp);
+    if (this.input.consumable) {
+      this.input.consumable = false;
+      this.useConsumable();
+    }
+    if (this.input.interact && this.nearProp) {
+      this.input.interact = false;
+      this.interact(this.nearProp);
+    }
 
     const speed = 108 * Math.max(0.35, 1 + s.moveSpeed);
     if (p.dashT > 0) {
@@ -545,7 +561,7 @@ export class World {
     const p = this.player;
     const act = this.run.cls.active;
     if (useClassActive(this, act.id)) {
-      p.activeCd = act.cooldown * (1 - Math.min(0.5, this.run.stats.dashCooldown * 0.5));
+      p.activeCd = this.activeCooldown();
       return;
     }
     const reach = (r: number) => {
@@ -589,7 +605,12 @@ export class World {
       this.sfx('reap', 1);
       this.grid.beginStamp();
     }
-    p.activeCd = act.cooldown * (1 - Math.min(0.5, this.run.stats.dashCooldown * 0.5));
+    p.activeCd = this.activeCooldown();
+  }
+
+  /** Dash-recovery bonuses also speed up the class skill (by half); penalties to the dash do not. */
+  private activeCooldown(): number {
+    return this.run.cls.active.cooldown * (1 - clamp(this.run.stats.dashCooldown * 0.5, 0, 0.5));
   }
 
   private reapAlong(ax: number, ay: number, bx: number, by: number) {
@@ -597,15 +618,14 @@ export class World {
     const dmg = this.run.held.damage() * (charge ? 2 : 2.6);
     const list = this.queryEnemies((ax + bx) / 2, (ay + by) / 2, dist(ax, ay, bx, by) / 2 + 18);
     for (const e of list) {
-      if (this.grid.seen(e)) continue;
+      // Each enemy is struck once per dash, when the dash reaches it.
+      if (this.grid.marked(e)) continue;
       const dx = bx - ax;
       const dy = by - ay;
       const l2 = dx * dx + dy * dy || 1;
       const t = clamp(((e.x - ax) * dx + (e.y - ay) * dy) / l2, 0, 1);
-      if (dist2(e.x, e.y, ax + dx * t, ay + dy * t) > (e.radius + 16) ** 2) {
-        this.grid.seen(e);
-        continue;
-      }
+      if (dist2(e.x, e.y, ax + dx * t, ay + dy * t) > (e.radius + 16) ** 2) continue;
+      this.grid.seen(e);
       if (charge) {
         hitEnemy(this, e, dmg, { weapon: this.run.held, type: 'physical', kb: 280, fromX: ax, fromY: ay });
         continue;
@@ -627,8 +647,8 @@ export class World {
     const max = this.run.stats.maxHp * (this.run.cls.id === 'alchemist' ? 0.7 : 1);
     if (c.id === 'chilli_jam') {
       healPlayer(this, max * 0.2, true, 999);
-      this.player.buffT = 8;
-      this.player.buffAs = 0.3;
+      this.player.buffT = Math.max(this.player.buffT, 8);
+      this.player.buffAs += 0.3;
       this.run.tempMods.attackSpeed = (this.run.tempMods.attackSpeed ?? 0) + 0.3;
       this.run.recompute();
     } else if (c.id === 'balm_tonic') {
@@ -930,7 +950,7 @@ export class World {
   private expireProjectile(p: Projectile) {
     // A moonberry bursts into seeking motes.
     if (p.weapon?.def.behaviour === 'moon' && p.split > 0 && p.kind === 'shot') {
-      spawnMotes(this, p.x, p.y, p.split, p.damage * p.splitDamage, p.weapon.params.pierce);
+      spawnMotes(this, p.x, p.y, p.split, p.damage * p.splitDamage, p.weapon.params.pierce, p.weapon);
       this.fx({ type: 'moonstep', x: p.x, y: p.y, c: 16 });
       this.projs.release(p);
       return;
@@ -1093,7 +1113,7 @@ export class World {
         // Dashing through a bullet dodges it, and so does the brief grace after a
         // hit: bullets are only spent when they actually hurt (or hit a ward).
         if (p.dashT > 0 || p.reapT > 0) continue;
-        if (p.iframes > 0 && this.petalShields <= 0) continue;
+        if (p.iframes > 0) continue;
         damagePlayer(this, b.damage, b.x, b.y, this.bulletCause(b.sprite));
         this.fx({ type: 'bulletpop', x: b.x, y: b.y });
         this.bullets.release(b);
@@ -1259,7 +1279,7 @@ export class World {
       if (s.cd <= 0 && dist2(s.x, s.y, s.target.x, s.target.y) < (s.target.radius + 4) ** 2) {
         s.cd = 0.4;
         const wi = s.weapon;
-        hitEnemy(this, s.target, 4 + (wi ? wi.damage() * 0.3 : 0), { weapon: wi, type: 'nature', kb: 10, fromX: s.x, fromY: s.y, source: 'summon' });
+        hitEnemy(this, s.target, 4 + (wi ? wi.damage() * 0.3 : 0), { weapon: wi, type: 'nature', kb: 10, fromX: s.x, fromY: s.y, source: 'summon', mite: true });
       }
     }
   }
@@ -1297,9 +1317,12 @@ export class World {
       }
       const a = angleTo(k.x, k.y, p.x, p.y - 4);
       const sp = 140 + k.age * 60 + (this.phase === 'lull' ? 200 : 0);
-      k.x += Math.cos(a) * sp * dt;
-      k.y += Math.sin(a) * sp * dt;
-      if (dist2(k.x, k.y, p.x, p.y - 4) < 64) this.collect(k);
+      // Never step past you: a fast pickup would otherwise orbit forever.
+      const d = dist(k.x, k.y, p.x, p.y - 4);
+      const step = Math.min(sp * dt, d);
+      k.x += Math.cos(a) * step;
+      k.y += Math.sin(a) * step;
+      if (d - step < 8) this.collect(k);
     }
   }
 
@@ -1367,22 +1390,27 @@ export class World {
         }
       }
     }
-    const ch = this.run.hookValue('compostHeart');
-    if (ch && this.statusDamageAcc >= ch) {
-      this.statusDamageAcc -= ch;
-      healPlayer(this, 3, true, 999);
+    const hearts = this.run.hasItem('compost_heart');
+    const every = ITEMS.compost_heart.hookValue ?? 150;
+    if (hearts && this.statusDamageAcc >= every) {
+      this.statusDamageAcc -= every;
+      healPlayer(this, 3 * hearts, true, 999);
     }
-    if (!ch) this.statusDamageAcc = 0;
+    if (!hearts) this.statusDamageAcc = 0;
     // Recent damage output, for the director.
     this.dpsWindow.push(this.stats.damageDealt);
-    if (this.dpsWindow.length > 60 * 15) this.dpsWindow.shift();
+    this.dpsTimes.push(this.t);
+    while (this.dpsTimes.length > 1 && this.t - this.dpsTimes[0] > 15) {
+      this.dpsTimes.shift();
+      this.dpsWindow.shift();
+    }
   }
 
   recentDps(): number {
-    if (this.dpsWindow.length < 60) return 0;
-    const a = this.dpsWindow[0];
-    const b = this.dpsWindow[this.dpsWindow.length - 1];
-    return (b - a) / (this.dpsWindow.length / 60);
+    const n = this.dpsTimes.length;
+    const span = n > 1 ? this.dpsTimes[n - 1] - this.dpsTimes[0] : 0;
+    if (span < 1) return 0;
+    return (this.dpsWindow[n - 1] - this.dpsWindow[0]) / span;
   }
 
   // -------------------------------------------------------------------------

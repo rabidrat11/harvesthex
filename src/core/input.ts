@@ -2,6 +2,7 @@
 // while a menu is open the game sees nothing (the DOM interface owns input).
 
 import type { Action, Settings } from '../meta/settings';
+import { menuArmed } from '../ui/menuArm';
 
 export class Input {
   private down = new Set<string>();
@@ -44,11 +45,14 @@ export class Input {
       this.rightDown = false;
     });
     window.addEventListener('mousemove', (e) => {
+      // A real move of the mouse hands aiming back from the pad.
+      if (Math.abs(e.clientX - this.mouseX) + Math.abs(e.clientY - this.mouseY) > 4) this.lastDevice = 'mouse';
       this.mouseX = e.clientX;
       this.mouseY = e.clientY;
       this.updateGamePos();
     });
     window.addEventListener('mousedown', (e) => {
+      this.lastDevice = 'mouse';
       if (e.button === 0) {
         this.mouseDown = true;
         if (!this.overUi(e)) this.leftPressed = true;
@@ -111,12 +115,15 @@ export class Input {
     this.padFire = b(7) || b(5) || al > 0.85;
     const edge = (i: number) => b(i) && !this.padPrev[i];
     if (gp.buttons.some((x) => x.pressed) || Math.hypot(mx, my) > 0) this.lastDevice = 'pad';
-    // Map buttons onto the same actions as the keyboard.
-    if (edge(0)) this.padActions.add('dash');
-    if (edge(2)) this.padActions.add('interact');
-    if (edge(3)) this.padActions.add('consumable');
+    // Map buttons onto the same actions as the keyboard (not while a menu has
+    // them, or a dash would fire the moment it closed).
+    if (!this.blocked) {
+      if (edge(0)) this.padActions.add('dash');
+      if (edge(2)) this.padActions.add('interact');
+      if (edge(3)) this.padActions.add('consumable');
+      if (edge(8)) this.padActions.add('map');
+    }
     if (edge(9)) this.padActions.add('pause');
-    if (edge(8)) this.padActions.add('map');
     if (edge(6) || edge(4)) this.rightPressed = !this.blocked;
     // In menus, the pad drives the same arrow-key navigation.
     if (this.blocked || document.querySelector('.nav-root')) {
@@ -127,7 +134,8 @@ export class Input {
         window.dispatchEvent(new KeyboardEvent('keydown', { code: dir, key: dir }));
       }
       if (!dir) this.padNavT = 0;
-      if (edge(0)) (document.activeElement as HTMLElement | null)?.click?.();
+      const roots = document.querySelectorAll('.nav-root');
+      if (edge(0) && menuArmed(roots[roots.length - 1])) (document.activeElement as HTMLElement | null)?.click?.();
       if (edge(1)) window.dispatchEvent(new KeyboardEvent('keydown', { code: 'Escape', key: 'Escape' }));
     }
     this.padPrev = gp.buttons.map((x) => x.pressed);
@@ -188,10 +196,12 @@ export class Input {
     return l > 0 ? { x: x / l, y: y / l } : { x: 0, y: 0 };
   }
 
+  /** Forget presses that have not been read yet. Keys and buttons still held stay
+   *  held, so you keep walking when a menu closes. */
   clear() {
-    this.down.clear();
     this.pressedOnce.clear();
-    this.mouseDown = false;
-    this.rightDown = false;
+    this.padActions.clear();
+    this.leftPressed = false;
+    this.rightPressed = false;
   }
 }

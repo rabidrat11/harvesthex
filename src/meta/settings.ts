@@ -112,7 +112,7 @@ export function loadSettings(): Settings {
     if (s.keys && typeof s.keys === 'object') {
       for (const a of Object.keys(d.keys) as Action[]) {
         const v = (s.keys as Record<string, unknown>)[a];
-        if (Array.isArray(v) && v.every((x) => typeof x === 'string')) out.keys[a] = v as string[];
+        if (Array.isArray(v) && v.length > 0 && v.every((x) => typeof x === 'string')) out.keys[a] = v as string[];
       }
     }
     if (out.uiFont !== 'clear' && out.uiFont !== 'pixel') out.uiFont = d.uiFont;
@@ -131,7 +131,8 @@ export function saveSettings(s: Settings) {
   }
 }
 
-export function keyLabel(code: string): string {
+export function keyLabel(code: string | undefined): string {
+  if (!code) return '?';
   if (code.startsWith('Key')) return code.slice(3);
   if (code.startsWith('Digit')) return code.slice(5);
   const map: Record<string, string> = {

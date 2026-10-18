@@ -81,6 +81,8 @@ export function LevelUpPanel() {
   const w = world();
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      // A held key repeats: it must not take every pending level-up unseen.
+      if (e.repeat) return;
       const n = Number(e.key);
       if (n >= 1 && n <= data.offers.length) bridge.expedition?.chooseOffer(n - 1);
       if (e.code === 'KeyR') bridge.expedition?.reroll();
@@ -172,8 +174,8 @@ export function ShopPanel() {
             <Icon k="ic_skull" /> {shop.bargain.taken ? 'Bargain struck' : `Bargain: ${shop.bargain.name}`}
           </Btn>
           <div class="spacer" />
-          <Btn onClick={() => bridge.expedition?.resume()}>Browse the field</Btn>
-          <Btn big class="primary" onClick={() => bridge.expedition?.pressOn()} autofocus>
+          <Btn autofocus onClick={() => bridge.expedition?.resume()}>Browse the field</Btn>
+          <Btn big class="primary" onClick={() => bridge.expedition?.pressOn()}>
             {final ? 'Ring the bell: face the King' : 'Ring the bell: press on'}
           </Btn>
         </div>
@@ -290,8 +292,8 @@ export function ExtractPanel() {
           Your fields will drink {l.sapCollected} sap.
         </div>
         <div class="row" style={{ marginTop: '6px', justifyContent: 'flex-end' }}>
-          <Btn onClick={() => bridge.expedition?.resume()}>Stay a while</Btn>
-          <Btn class="primary" autofocus onClick={() => bridge.expedition?.extract()}>
+          <Btn autofocus onClick={() => bridge.expedition?.resume()}>Stay a while</Btn>
+          <Btn class="primary" onClick={() => bridge.expedition?.extract()}>
             Load the haycart
           </Btn>
         </div>

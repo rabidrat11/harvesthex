@@ -95,8 +95,12 @@ export function buildResult(w: World): RunResult {
 export function checkpointResult(w: World, safe: boolean): RunResult {
   const saved = w.phase;
   w.phase = safe ? 'extracted' : 'defeat';
-  const r = buildResult(w);
-  w.phase = saved;
+  let r: RunResult;
+  try {
+    r = buildResult(w);
+  } finally {
+    w.phase = saved;
+  }
   r.outcome = 'extracted';
   r.recovered = true;
   r.cause = '';

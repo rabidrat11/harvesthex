@@ -14,7 +14,7 @@ import { REPAIRS, EXPANSIONS, HELD_TIERS, EQUIPMENT, JARS, maxJars } from '../da
 import { QUALITY_LABEL, FAMILY_LABEL, type Quality } from '../data/types';
 import { ROT_TIERS } from '../data/regions';
 import { describeWeapon, weaponSummary } from './describe';
-import { addSeeds, hasMaterials, payMaterials, type ProduceStack, type EquipSlot } from '../meta/profile';
+import { addSeeds, hasMaterials, payMaterials, pruneGrafts, sameTraits, type ProduceStack, type EquipSlot } from '../meta/profile';
 import { compostProduce, compostSeed, crossbreed, mutateCrop, plotStage, preserve, clampLoadoutJars } from '../farm/farm';
 import { Rng } from '../core/rng';
 import { describeMods, fmtStat, STAT_INFO, type StatKey } from '../data/stats';
@@ -452,8 +452,10 @@ function PottingPanel() {
   useUi((s) => s.version);
   const [picking, setPicking] = useState<number | null>(null);
   const cls = CLASSES[p.classes.selected];
+  // Grafts whose produce has since been eaten, composted or crossed come off.
+  pruneGrafts(p);
   const grafts = p.loadout.grafts;
-  const used = (s: ProduceStack) => grafts.filter((g) => g && g.species === s.species && g.quality === s.quality && g.traits.join() === s.traits.join()).length;
+  const used = (s: ProduceStack) => grafts.filter((g) => g && g.species === s.species && g.quality === s.quality && sameTraits(g.traits, s.traits)).length;
   const weaponProduce = p.produce.filter((s) => CROPS[s.species]?.weapon);
   clampLoadoutJars(p);
   const jarTotal = Object.values(p.loadout.jars).reduce((a, b) => a + b, 0);
@@ -1285,7 +1287,9 @@ function FarmhousePanel() {
                         s={s}
                         selected={picks.includes(s)}
                         onClick={() => {
-                          const next = picks.includes(s) ? picks.filter((x) => x !== s) : [...picks.filter(fits), s].slice(-need);
+                          // Two from one stack is fine for "any two produce", if there are two.
+                          const again = need === 2 && picks.length === 1 && picks[0] === s && s.count >= 2;
+                          const next = picks.includes(s) && !again ? picks.filter((x) => x !== s) : [...picks.filter(fits), s].slice(-need);
                           if (next.length === need) {
                             const r = preserve(p, j.id, next.map((x) => ({ species: x.species, traits: x.traits, quality: x.quality as Quality })));
                             ui.toast(r.msg ?? '', r.ok ? 'good' : 'info', j.icon);

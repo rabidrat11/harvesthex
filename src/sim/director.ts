@@ -134,7 +134,8 @@ export class Director {
   private runEvent(ev: AcreEvent) {
     const w = this.w;
     const p = w.player;
-    if (ev.message) w.emit({ type: 'message', text: ev.message, tone: ev.kind === 'objective' ? 'good' : 'warn' });
+    // Elite and shrine events announce themselves below (an elite only once it appears).
+    if (ev.message && ev.kind !== 'elite' && ev.kind !== 'objective') w.emit({ type: 'message', text: ev.message, tone: 'warn' });
     switch (ev.kind) {
       case 'encircle': {
         // A ring with a deliberate gap so it can always be escaped.
@@ -206,7 +207,7 @@ export class Director {
     for (let i = 0; i < 6; i++) w.dropPickup('farthing', pr.x, pr.y, 1);
     dropSap(w, pr.x, pr.y, 25);
     // Pests that were drawn to it scatter.
-    for (const e of w.queryEnemies(pr.x, pr.y, 90)) e.fearT = 2;
+    for (const e of w.queryEnemies(pr.x, pr.y, 90)) if (!e.elite) e.fearT = 2;
   }
 
   private endAcre() {
@@ -227,6 +228,7 @@ export class Director {
     w.props.push({ kind: 'exit', x: exit.x, y: exit.y, r: 12, active: true });
     // Wild crops pick a new trait for the next acre.
     for (const wi of w.run.weapons) wi.rollWild(w.rng);
+    w.run.recompute();
     // Bargain curses expire.
     w.run.curses = w.run.curses.filter((c) => --c.acresLeft > 0);
     if (!w.run.curses.length && Object.keys(w.run.tempMods).length) {

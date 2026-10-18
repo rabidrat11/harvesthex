@@ -12,7 +12,10 @@ import type { Rng } from '../core/rng';
 import type { RunState } from './run';
 import type { World } from './world';
 import type { Enemy, Projectile, Summon } from './entities';
-import { explode, hitEnemy, healPlayer, chainLightning } from './combat';
+import { explode, hitEnemy, healPlayer } from './combat';
+
+/** Behaviours that attack continuously rather than in discrete volleys. */
+const STEADY = ['orbit', 'summoner', 'swarm'];
 import { classWeaponMult } from './classes';
 
 const PROJ_RADIUS: Record<string, number> = {
@@ -90,13 +93,23 @@ export class WeaponInstance {
       const s = { ...this.def.status };
       if (s.id === 'poison' && extra.poison) s.power += extra.poison;
       if (s.id === 'burn' && extra.burn) s.power += extra.burn;
+      if (s.id === 'chill' && extra.smokeSlow) s.power += 0.2 * extra.smokeSlow;
       status.push(s);
     }
     for (const t of this.allTraits) {
       const td = TRAITS[t];
       for (const k in td.add) (p as any)[k] += (td.add as any)[k];
-      for (const k in td.mult) (p as any)[k] *= (td.mult as any)[k];
+      for (const k in td.mult) {
+        // Stronger mutations (the Botanist) grow the upside, never the drawback.
+        const v = (td.mult as any)[k] as number;
+        (p as any)[k] *= v > 1 ? 1 + (v - 1) * this.traitPower : v;
+      }
       if (td.status) status.push({ ...td.status, power: td.status.power * this.traitPower });
+    }
+    // Hollow adds a projectile; a sweep has none, so it swings once more instead.
+    if (this.def.behaviour === 'sweep' && this.hasTrait('hollow')) {
+      p.count -= TRAITS.hollow.add?.count ?? 0;
+      p.burst += 1;
     }
     this.params = p;
     this.extra = extra;
@@ -112,8 +125,9 @@ export class WeaponInstance {
     let m = 1 + s.damage + s[this.def.dmgType] + (s[famKey] ?? 0);
     if (run.cls.id === 'fieldhand' && !this.held) m += 0.05 * run.families().size;
     if (run.cls.id === 'reaper' && this.def.tags.includes('projectile')) m -= 0.3;
-    if (this.hasTrait('thorned') && (this.def.behaviour === 'orbit' || this.def.behaviour === 'sweep')) m += 0.2;
+    if (this.hasTrait('thorned') && (this.def.behaviour === 'orbit' || this.def.behaviour === 'sweep')) m += 0.2 * this.traitPower;
     if (this.def.tags.includes('summon')) m *= 1 + s.summonPower;
+    if (this.hasTrait('echoing') && STEADY.includes(this.def.behaviour)) m *= 1 + 0.22 * this.traitPower;
     m *= classWeaponMult(run.cls.id, this.def.tags, this.held);
     this.dmgMult = Math.max(0.1, m);
     this.critChance = Math.max(0, s.critChance + this.params.critBonus);
@@ -331,7 +345,7 @@ function fireLobs(w: World, wi: WeaponInstance, echo: boolean) {
     let tx: number;
     let ty: number;
     if (wi.def.targeting === 'aim') {
-      const d = Math.min(wi.range(), Math.hypot(w.input.aimX - pl.x, w.input.aimY - pl.y));
+      const d = Math.min(wi.range(), Math.hypot(pl.aimX - pl.x, pl.aimY - pl.y));
       tx = pl.x + Math.cos(pl.aim) * d + (i ? w.rng.range(-20, 20) : 0);
       ty = pl.y + Math.sin(pl.aim) * d + (i ? w.rng.range(-20, 20) : 0);
     } else {
@@ -649,8 +663,8 @@ function updateStrike(w: World, wi: WeaponInstance, dt: number) {
   w.sfx('thunder', 0.9);
   w.shake(2.5, 0.12);
   const dmg = (wi.extra.strikeDamage ?? 40) * wi.dmgMult;
+  // A direct hit, so it arcs through the weapon's own chain (once).
   hitEnemy(w, e, dmg, { weapon: wi, type: 'elemental', kb: 40, fromX: e.x, fromY: e.y - 1, source: 'direct' });
-  chainLightning(w, e, dmg * 0.6, wi.params.chain, wi.extra.chainRange ?? 80, wi.extra.chainFalloff ?? 0.8, wi);
 }
 
 function updateOrbit(w: World, wi: WeaponInstance, dt: number) {

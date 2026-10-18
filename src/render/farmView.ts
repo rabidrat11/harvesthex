@@ -44,6 +44,7 @@ export class FarmView {
   private anims: { img: Phaser.GameObjects.Image; key: string; fps: number; t: number }[] = [];
   private buildingImgs = new Map<string, Phaser.GameObjects.Image>();
   scarecrow!: Phaser.GameObjects.Image;
+  private scarecrowCircle: { x: number; y: number; r: number } | null = null;
   bertha!: Phaser.GameObjects.Image;
   private hover: Phaser.GameObjects.Graphics;
   private t = 0;
@@ -242,7 +243,8 @@ export class FarmView {
   private buildNpcs() {
     const sc = this.profile?.scarecrow ?? { tx: 23, ty: 12 };
     this.scarecrow = this.scene.add.image(sc.tx * 16 + 8, sc.ty * 16 + 16, ATLAS, F('farm_scarecrow_0')).setOrigin(0.5, 1).setDepth(1000 + sc.ty * 16 + 16);
-    this.circles.push({ x: this.scarecrow.x, y: this.scarecrow.y - 3, r: 5 });
+    this.scarecrowCircle = { x: this.scarecrow.x, y: this.scarecrow.y - 3, r: 5 };
+    this.circles.push(this.scarecrowCircle);
     this.anims.push({ img: this.scarecrow, key: 'farm_scarecrow', fps: 1, t: 0 });
     this.bertha = this.scene.add.image(560, 160, ATLAS, F('npc_bertha_0')).setOrigin(0.5, 1).setDepth(1000 + 160);
     this.anims.push({ img: this.bertha, key: 'npc_bertha', fps: 2, t: 0 });
@@ -255,7 +257,7 @@ export class FarmView {
     const x = spot[0] * 16 + 8;
     const y = spot[1] * 16 + 16;
     this.scarecrow.setPosition(x, y).setDepth(1000 + y);
-    const c = this.circles.find((q) => Math.abs(q.r - 5) < 0.01);
+    const c = this.scarecrowCircle;
     if (c) {
       c.x = x;
       c.y = y - 3;

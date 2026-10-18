@@ -124,6 +124,8 @@ test('the whole loop: plant, set out, fight, come home, harvest, reload', async 
     const s = await state(page);
     if (s.panel === 'levelup') {
       const level = s.world.level;
+      // A choice only counts once the panel has been up long enough to be seen.
+      await page.waitForTimeout(320);
       await page.keyboard.press('Digit1');
       await page.waitForTimeout(80);
       expect((await state(page)).world.level).toBe(level + 1);
@@ -493,5 +495,51 @@ test('every one of the twelve classes has all its art in play', async ({ page })
   await page.waitForTimeout(300);
   expect(await page.locator('.modal .itemslot').count()).toBeGreaterThanOrEqual(12);
   expect(await page.evaluate(() => window.__HX.missingFrames())).toEqual([]);
+  expect(errors).toEqual([]);
+});
+
+test('menus ignore stray keys: no blind picks, no double picks, nothing left unbound', async ({ page }) => {
+  const errors = watchErrors(page);
+  await page.goto('/');
+  await expect(page.getByText('New game')).toBeVisible();
+  await page.evaluate(() => window.__HX.startExpedition(12));
+  await page.waitForFunction(() => window.__HX.state().world?.phase === 'acre');
+  await page.evaluate(() => {
+    const w = window.__HX.world();
+    w.godMode = true;
+    w.run.pendingLevels = 2;
+    w.emit({ type: 'levelup' });
+  });
+  await page.waitForFunction(() => window.__HX.ui.get().panel === 'levelup');
+  const level = () => page.evaluate(() => window.__HX.world().run.level);
+  const l0 = await level();
+  // Mashing dash (Space) or a choice key the instant the cards appear picks nothing.
+  for (let i = 0; i < 4; i++) await page.keyboard.press('Space');
+  await page.keyboard.press('Digit1');
+  expect(await level()).toBe(l0);
+  // Once it has been seen, one press takes one level, even pressed twice.
+  await page.waitForTimeout(350);
+  await page.keyboard.press('Digit1');
+  await page.keyboard.press('Digit1');
+  await page.waitForTimeout(50);
+  expect(await level()).toBe(l0 + 1);
+  await page.waitForTimeout(350);
+  await page.keyboard.press('Digit2');
+  await page.waitForTimeout(100);
+  expect(await level()).toBe(l0 + 2);
+  expect(await page.evaluate(() => window.__HX.ui.get().panel)).toBeNull();
+  // Losing focus mid-fight pauses.
+  await page.evaluate(() => window.dispatchEvent(new Event('blur')));
+  await page.waitForTimeout(100);
+  expect(await page.evaluate(() => window.__HX.ui.get().panel)).toBe('pause');
+  // Rebinding a key another action used never leaves that action without one.
+  await page.evaluate(() => window.__HX.ui.open('controls'));
+  await page.waitForTimeout(350);
+  await page.locator('.modal .row', { hasText: 'Dash' }).locator('button.seg').click();
+  await page.keyboard.press('KeyE');
+  await page.waitForTimeout(100);
+  const keys = await page.evaluate(() => window.__HX.game.settings.keys);
+  expect(keys.dash).toContain('KeyE');
+  expect(keys.interact.length).toBeGreaterThan(0);
   expect(errors).toEqual([]);
 });

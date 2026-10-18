@@ -199,6 +199,26 @@ export function takeProduce(p: Profile, species: string, traits: TraitId[], qual
   return true;
 }
 
+/**
+ * Drop grafts whose produce has left the stores (composted, eaten, offered,
+ * crossbred). Each graft needs its own piece of produce. Returns the species dropped.
+ */
+export function pruneGrafts(p: Profile): string[] {
+  const left = p.produce.map((s) => s.count);
+  const dropped: string[] = [];
+  p.loadout.grafts = p.loadout.grafts.map((g) => {
+    if (!g) return null;
+    const i = p.produce.findIndex((x, j) => left[j] > 0 && x.species === g.species && x.quality === g.quality && sameTraits(x.traits, g.traits));
+    if (i < 0) {
+      dropped.push(g.species);
+      return null;
+    }
+    left[i]--;
+    return g;
+  });
+  return dropped;
+}
+
 export function addMaterial(p: Profile, id: string, n: number) {
   p.materials[id] = (p.materials[id] ?? 0) + n;
 }

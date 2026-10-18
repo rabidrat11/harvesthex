@@ -108,6 +108,8 @@ export class Enemy implements Poolable {
   shock = 0;
   dotAcc = 0;
   dotTick = 0;
+  /** The weapon that last poisoned, burned or bled this enemy: its damage over time is credited there. */
+  dotBy: WeaponInstance | null = null;
   fearT = 0;
   /** Last time each weapon slot touched this enemy (orbits, hazards). */
   lastHit = new Float64Array(10);
@@ -282,6 +284,8 @@ export class Emitter implements Poolable {
   active = false;
   _i?: number;
   owner: Enemy | null = null;
+  /** The owner's id when the emitter began: a reused enemy slot is not the same enemy. */
+  ownerId = 0;
   x = 0;
   y = 0;
   angle = 0;

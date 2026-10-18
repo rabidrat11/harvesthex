@@ -1,4 +1,4 @@
-import { useState } from 'preact/hooks';
+import { useEffect, useRef, useState } from 'preact/hooks';
 import { bridge, ui } from './store';
 import { Btn, Icon, Keycap, Modal } from './components';
 import { game } from '../game/state';
@@ -8,6 +8,9 @@ import type { ComponentChildren } from 'preact';
 
 export function TitleMenu() {
   const hasSave = !!game.profile;
+  useEffect(() => {
+    (document.querySelector('.title-menu [data-autofocus]') as HTMLElement | null)?.focus({ preventScroll: true });
+  }, []);
   return (
     <>
     <div class="title-tag">Grow something dangerous.</div>
@@ -243,22 +246,40 @@ export function ControlsPanel() {
   const [waiting, setWaiting] = useState<Action | null>(null);
   const [, force] = useState(0);
   const keys = game.settings.keys;
+  // The one key listener waiting for a new binding; never left behind.
+  const pending = useRef<((e: KeyboardEvent) => void) | null>(null);
+  const stopListening = () => {
+    if (pending.current) window.removeEventListener('keydown', pending.current, true);
+    pending.current = null;
+  };
+  useEffect(() => stopListening, []);
   const listen = (a: Action) => {
+    stopListening();
     setWaiting(a);
     const onKey = (e: KeyboardEvent) => {
       e.preventDefault();
       e.stopPropagation();
-      window.removeEventListener('keydown', onKey, true);
+      stopListening();
       if (e.code !== 'Escape' || a === 'pause') {
-        // Unbind the key from anything else first.
-        for (const k of Object.keys(keys) as Action[]) keys[k] = keys[k].filter((c) => c !== e.code);
-        keys[a] = [e.code, ...keys[a].filter((c) => c !== e.code)].slice(0, 2);
+        // Take the key from any other action. An action left with no key at all
+        // gets this one's old key instead (a swap), so nothing is ever unbound.
+        const prev = keys[a].filter((c) => c !== e.code);
+        for (const k of Object.keys(keys) as Action[]) {
+          if (k === a || !keys[k].includes(e.code)) continue;
+          keys[k] = keys[k].filter((c) => c !== e.code);
+          if (!keys[k].length) {
+            const give = prev.shift();
+            keys[k] = give ? [give] : [...DEFAULT_KEYS[k]].filter((c) => !Object.values(keys).some((ks) => ks.includes(c)) && c !== e.code).slice(0, 1);
+          }
+        }
+        keys[a] = [e.code, ...prev].slice(0, 2);
         game.saveSettings();
       }
       game.input.consume(e.code);
       setWaiting(null);
       force((n) => n + 1);
     };
+    pending.current = onKey;
     window.addEventListener('keydown', onKey, true);
   };
   const actions = Object.keys(ACTION_LABEL) as Action[];

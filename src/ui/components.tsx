@@ -7,6 +7,7 @@ import { frameUrl } from '../render/textures';
 import { TRAITS } from '../data/traits';
 import { MATERIALS } from '../data/materials';
 import type { TraitId } from '../data/types';
+import { menuArmed } from './menuArm';
 import { game } from '../game/state';
 
 export function Icon({ k, scale = 1, title, class: cls }: { k: string; scale?: number; title?: string; class?: string }) {
@@ -82,6 +83,7 @@ export function Modal({ children, width, class: cls, clear, onBack }: { children
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
+    el.dataset.opened = String(performance.now());
     const first = (el.querySelector('[data-autofocus]') ?? el.querySelector('[data-nav]:not([disabled])')) as HTMLElement | null;
     first?.focus({ preventScroll: true });
   }, []);
@@ -94,7 +96,7 @@ export function Modal({ children, width, class: cls, clear, onBack }: { children
   );
 }
 
-/** Arrow keys, WASD, Enter and Escape for whatever menu is on top. */
+/** Arrow keys, WASD, Enter, Tab and Escape for whatever menu is on top. */
 export function installMenuNav(getBack: () => (() => void) | null) {
   window.addEventListener(
     'keydown',
@@ -112,6 +114,29 @@ export function installMenuNav(getBack: () => (() => void) | null) {
           game.sfx('ui_back', 0.6);
           back();
         }
+        return;
+      }
+      const target0 = e.target as HTMLElement;
+      const typing = target0?.tagName === 'INPUT' && (target0 as HTMLInputElement).type === 'text';
+      // Space is the dash key: in a menu it never presses a button (Enter does).
+      if (key === 'Space' && !typing) {
+        e.preventDefault();
+        return;
+      }
+      if (key === 'Enter' && !menuArmed(root)) {
+        e.preventDefault();
+        e.stopPropagation();
+        return;
+      }
+      // Tab cycles through the menu's own controls and never leaves it.
+      if (key === 'Tab') {
+        e.preventDefault();
+        const items = [...root.querySelectorAll<HTMLElement>('[data-nav]:not([disabled])')].filter((el) => el.offsetParent !== null);
+        if (!items.length) return;
+        const i = items.indexOf(document.activeElement as HTMLElement);
+        const next = items[(i + (e.shiftKey ? -1 : 1) + items.length) % items.length];
+        next.focus();
+        next.scrollIntoView({ block: 'nearest' });
         return;
       }
       const dir =
@@ -154,7 +179,7 @@ export function installMenuNav(getBack: () => (() => void) | null) {
         }
         return;
       }
-      if ((key === 'Enter' || key === 'Space') && document.activeElement && root.contains(document.activeElement)) {
+      if (key === 'Enter' && document.activeElement && root.contains(document.activeElement)) {
         const el = document.activeElement as HTMLElement;
         if (el.tagName !== 'BUTTON' && el.hasAttribute('data-nav')) {
           e.preventDefault();

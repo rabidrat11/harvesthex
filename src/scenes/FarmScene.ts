@@ -11,7 +11,7 @@ import { fertilise, harvest, plant, plotStage, till, water } from '../farm/farm'
 import { CROPS, MATURE } from '../data/crops';
 import { QUALITY_LABEL } from '../data/types';
 import { Rng } from '../core/rng';
-import { takeProduce, type Plot } from '../meta/profile';
+import { pruneGrafts, takeProduce, type Plot } from '../meta/profile';
 import type { RunResult } from '../meta/results';
 import { checkUnlocks } from '../meta/results';
 import { clampLoadoutJars } from '../farm/farm';
@@ -497,13 +497,16 @@ export class FarmScene extends Phaser.Scene {
   depart() {
     const p = game.profile!;
     if (this.leaving) return;
-    // Grafted produce and packed jars leave the stores with you.
-    for (const g of p.loadout.grafts) {
-      if (g && !takeProduce(p, g.species, g.traits, g.quality)) {
-        ui.toast('Some of your grafts are no longer in the stores.', 'warn');
-        return;
-      }
+    // Grafts whose produce has gone (eaten, composted, crossed) come off the
+    // satchel first, so nothing is taken from the stores unless you can leave.
+    const gone = pruneGrafts(p);
+    if (gone.length) {
+      ui.toast(`No longer in the stores, so taken off the satchel: ${gone.map((s) => CROPS[s]?.name ?? s).join(', ')}.`, 'warn');
+      ui.bump();
+      return;
     }
+    // Grafted produce and packed jars leave the stores with you.
+    for (const g of p.loadout.grafts) if (g) takeProduce(p, g.species, g.traits, g.quality);
     clampLoadoutJars(p);
     const loadout = game.makeLoadout();
     for (const [k, n] of Object.entries(p.loadout.jars)) p.jars[k] = Math.max(0, (p.jars[k] ?? 0) - n);

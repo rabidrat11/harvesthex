@@ -37,7 +37,7 @@ export const STAT_CARDS: StatCard[] = [
   { id: 'quick_hands', name: 'Quick Hands', icon: 'ic_clock', mods: { attackSpeed: 0.06 } },
   { id: 'thick_skin', name: 'Thick Skin', icon: 'ic_heart', mods: { maxHp: 8 } },
   { id: 'hearty', name: 'Hearty Breakfast', icon: 'ic_heart', mods: { regen: 0.25 } },
-  { id: 'patched_coat', name: 'Patched Coat', icon: 'ic_armour', mods: { armour: 1 } },
+  { id: 'patched_coat', name: 'Patched Coat', icon: 'ic_armour', mods: { armour: 1.25 } },
   { id: 'light_feet', name: 'Light Feet', icon: 'ic_speed', mods: { moveSpeed: 0.05 } },
   { id: 'nimble', name: 'Nimble', icon: 'ic_dash', mods: { dashCooldown: 0.08 } },
   { id: 'long_stride', name: 'Long Stride', icon: 'ic_dash', mods: { dashDistance: 0.12 } },
@@ -46,7 +46,7 @@ export const STAT_CARDS: StatCard[] = [
   { id: 'wide_swing', name: 'Wide Swing', icon: 'ic_star', mods: { area: 0.08 }, relevant: (r) => r.weapons.some((w) => w.params.area > 0) || r.held.params.area > 0 },
   { id: 'strong_arm', name: 'Strong Arm', icon: 'ic_star', mods: { range: 0.1 }, relevant: shoots },
   { id: 'fast_seeds', name: 'Hard Seeds', icon: 'ic_seed', mods: { projSpeed: 0.1, damage: 0.02 }, relevant: shoots },
-  { id: 'extra_seed', name: 'One More Seed', icon: 'ic_seed', mods: { projCount: 0.4 }, relevant: shoots, minRarity: 'rare' },
+  { id: 'extra_seed', name: 'One More Seed', icon: 'ic_seed', mods: { projCount: 0.6 }, relevant: shoots, minRarity: 'rare' },
   { id: 'heavy_hands', name: 'Heavy Hands', icon: 'dt_physical', mods: { knockback: 0.15 } },
   { id: 'lingering', name: 'Lingering Rot', icon: 'dt_nature', mods: { statusDuration: 0.12 }, relevant: hasStatus },
   { id: 'four_leaf', name: 'Four-Leaf Clover', icon: 'ic_luck', mods: { luck: 2 } },
@@ -271,14 +271,40 @@ function rollShopOffer(world: World, rng: Rng, exclude: Set<string>): { offer: O
   return { offer: { kind: 'item', id: it.id, rarity: it.rarity }, price: itemPrice(world, it.id) };
 }
 
+/** What an offer is for, so two slots never offer the same weapon or item. */
+function offerKey(o: Offer): string {
+  if (o.kind === 'item' || o.kind === 'weaponNew') return o.id;
+  if (o.kind === 'weaponUp') return o.weapon.def.id;
+  return '';
+}
+
+/** Whether an offer (perhaps locked in an earlier acre) can still be bought. */
+export function offerValid(world: World, o: Offer): boolean {
+  const run = world.run;
+  if (o.kind === 'weaponNew') return run.weapons.length < WEAPON_SLOTS && !run.weapons.some((w) => w.def.id === o.id || w.def.evolvedFrom === o.id);
+  if (o.kind === 'weaponUp') return run.weapons.includes(o.weapon) && !o.weapon.def.evolvedFrom && o.weapon.level < MAX_WEAPON_LEVEL;
+  return true;
+}
+
+function lockedSlots(shop: { slots: ShopSlot[] } | null | undefined, exclude: Set<string>): (ShopSlot | null)[] {
+  return (shop?.slots ?? []).map((s) => {
+    if (!s.locked || s.sold) return null;
+    exclude.add(offerKey(s.offer));
+    return s;
+  });
+}
+
 export function makeShop(world: World, rng: Rng, prev?: Shop | null): Shop {
   const slots: ShopSlot[] = [];
   const exclude = new Set<string>();
-  for (const s of prev?.slots ?? []) {
-    if (s.locked && !s.sold) {
-      slots.push({ ...s, locked: true });
-      exclude.add(s.offer.kind === 'item' ? s.offer.id : s.offer.kind === 'weaponNew' ? s.offer.id : '');
-    }
+  for (const s of lockedSlots(prev, exclude)) {
+    // A locked offer that no longer applies (that weapon was since levelled to
+    // the top, evolved, or taken) is dropped rather than sold for nothing.
+    if (!s || !offerValid(world, s.offer)) continue;
+    const o = s.offer;
+    if (o.kind === 'weaponUp') {
+      slots.push({ ...s, offer: { ...o, desc: o.weapon.def.levels[o.weapon.level - 1]?.desc ?? '' }, price: weaponPrice(world, o.weapon.def.id, o.weapon.level + 1), locked: true });
+    } else slots.push({ ...s, locked: true });
   }
   while (slots.length < 4) {
     const r = rollShopOffer(world, rng, exclude);
@@ -297,6 +323,7 @@ export function rerollShop(world: World, rng: Rng, shop: Shop): boolean {
   if (world.run.sap < cost) return false;
   world.run.sap -= cost;
   const exclude = new Set<string>();
+  lockedSlots(shop, exclude);
   shop.slots = shop.slots.map((s) => {
     if (s.locked && !s.sold) return s;
     const r = rollShopOffer(world, rng, exclude);
@@ -308,7 +335,7 @@ export function rerollShop(world: World, rng: Rng, shop: Shop): boolean {
 
 export function buySlot(world: World, slot: ShopSlot): boolean {
   if (slot.sold || world.run.sap < slot.price) return false;
-  if (slot.offer.kind === 'weaponNew' && world.run.weapons.length >= WEAPON_SLOTS) return false;
+  if (!offerValid(world, slot.offer)) return false;
   world.run.sap -= slot.price;
   slot.sold = true;
   slot.locked = false;

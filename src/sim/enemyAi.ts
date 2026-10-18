@@ -47,18 +47,22 @@ function attackLoop(w: World, e: Enemy, dt: number, opts: { range?: number; free
   e.attackCd -= dt;
   if (e.attackCd > 0) return false;
   const d = dist(e.x, e.y, w.targetX, w.targetY);
-  const id = atks[e.attackIndex % atks.length];
-  const a = ATTACKS[id];
-  if (a.range && d > a.range) return false;
   // Do not shoot from far off-screen.
   if (Math.abs(e.x - w.player.x) > 360 || Math.abs(e.y - w.player.y) > 210) return false;
-  e.attackIndex++;
-  startAttack(w, e, id);
-  return true;
+  // Take the next attack in the rotation that can reach.
+  for (let k = 0; k < atks.length; k++) {
+    const id = atks[(e.attackIndex + k) % atks.length];
+    const a = ATTACKS[id];
+    if (a.range && d > a.range) continue;
+    e.attackIndex += k + 1;
+    startAttack(w, e, id);
+    return true;
+  }
+  return false;
 }
 
 export function updateEnemyAi(w: World, e: Enemy, dt: number) {
-  if (e.fearT > 0 && !e.boss && !e.elite) {
+  if (e.fearT > 0 && !e.boss) {
     const a = angleTo(w.player.x, w.player.y, e.x, e.y);
     e.vx = Math.cos(a) * e.speed * 1.2;
     e.vy = Math.sin(a) * e.speed * 1.2;
@@ -89,8 +93,8 @@ export function updateEnemyAi(w: World, e: Enemy, dt: number) {
     case 'wraith':
       if (!attackLoop(w, e, dt, { freeze: false })) seek(w, e, e.speed);
       else {
-        e.vx *= 0.92;
-        e.vy *= 0.92;
+        e.vx *= Math.pow(0.92, dt * 60);
+        e.vy *= Math.pow(0.92, dt * 60);
       }
       break;
     case 'knight':
@@ -164,8 +168,9 @@ function charger(w: World, e: Enemy, dt: number) {
       e.vy = Math.sin(e.angle) * sp;
       if (e.stateT % 0.08 < dt) w.fx({ type: 'dust', x: e.x, y: e.y + 2 });
       // Charging into a wall stuns it.
-      const hit = w.map.obstacles.some((o) => dist2(e.x, e.y, o.x, o.y) < (o.r + e.radius + 2) ** 2);
-      const edge = e.x < w.map.margin + 12 || e.y < w.map.margin + 12 || e.x > w.map.w - w.map.margin - 12 || e.y > w.map.h - w.map.margin - 12;
+      const hit = w.map.obstacles.some((o) => dist2(e.x, e.y, o.x, o.y) < (o.r + e.radius + 2) ** 2 && (o.x - e.x) * e.vx + (o.y - e.y) * e.vy > 0);
+      const m = w.map.margin + 12;
+      const edge = (e.x < m && e.vx < 0) || (e.y < m && e.vy < 0) || (e.x > w.map.w - m && e.vx > 0) || (e.y > w.map.h - m && e.vy > 0);
       if (hit || edge || e.stateT > 0.7) {
         e.state = 'recover';
         e.stateT = hit || edge ? -0.7 : 0;
@@ -177,8 +182,8 @@ function charger(w: World, e: Enemy, dt: number) {
       break;
     }
     case 'recover':
-      e.vx *= 0.8;
-      e.vy *= 0.8;
+      e.vx *= Math.pow(0.8, dt * 60);
+      e.vy *= Math.pow(0.8, dt * 60);
       if (e.stateT >= 0.8) {
         e.state = 'move';
         e.stateT = 0;
@@ -480,8 +485,8 @@ function marrowKing(w: World, e: Enemy, dt: number) {
     return;
   }
   if (e.state === 'attack' && e.attack) {
-    e.vx *= 0.9;
-    e.vy *= 0.9;
+    e.vx *= Math.pow(0.9, dt * 60);
+    e.vy *= Math.pow(0.9, dt * 60);
     if (runAttack(w, e, dt)) {
       const pace = e.phase === 1 ? 0.62 : 0.85;
       e.attackCd = (e.attack.cooldown - (e.attack.steps[e.attack.steps.length - 1]?.at ?? 0) - e.attack.windup) * pace;

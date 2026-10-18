@@ -6,6 +6,9 @@
 import { hashString } from '../core/rng';
 import { newProfile, makePlots, SAVE_VERSION, type Profile } from './profile';
 import { CLASS_ORDER } from '../data/classes';
+import { CROPS } from '../data/crops';
+import { TRAITS } from '../data/traits';
+import { EQUIPMENT } from '../data/farm';
 
 const KEY = 'harvesthex.save';
 const BACKUP = 'harvesthex.save.bak';
@@ -78,6 +81,27 @@ function conform(def: unknown, v: unknown): unknown {
 
 const num = (v: unknown, d = 0) => (typeof v === 'number' && Number.isFinite(v) ? v : d);
 const strArr = (v: unknown) => (Array.isArray(v) ? v.filter((x) => typeof x === 'string') : []);
+/** Only traits the game knows (an old or edited save may name others). */
+const traitArr = (v: unknown) => strArr(v).filter((t) => t in TRAITS) as never[];
+const isCrop = (v: unknown): v is string => typeof v === 'string' && v in CROPS;
+
+/** Whether a stored run result has everything applyResult reads. */
+function isRunResult(v: unknown): boolean {
+  if (!isObj(v)) return false;
+  const numbers = ['farthings', 'sapCollected', 'time', 'level', 'kills', 'acreReached', 'keptShare', 'day'];
+  return (
+    ['victory', 'extracted', 'defeat'].includes(v.outcome as string) &&
+    numbers.every((k) => typeof v[k] === 'number' && Number.isFinite(v[k])) &&
+    isObj(v.materials) &&
+    Object.values(v.materials).every((n) => typeof n === 'number' && Number.isFinite(n)) &&
+    Array.isArray(v.seeds) &&
+    v.seeds.every((s) => isObj(s) && typeof s.species === 'string' && Array.isArray(s.traits)) &&
+    Array.isArray(v.weapons) &&
+    Array.isArray(v.growth) &&
+    Array.isArray(v.jarsLeft) &&
+    (v.killsByEnemy === undefined || isObj(v.killsByEnemy))
+  );
+}
 
 export function validate(raw: Record<string, unknown>): Profile {
   const def = newProfile();
@@ -85,17 +109,20 @@ export function validate(raw: Record<string, unknown>): Profile {
   p.version = SAVE_VERSION;
   p.farthings = Math.max(0, Math.floor(num(p.farthings)));
   p.day = Math.max(1, Math.floor(num(p.day, 1)));
+  // Materials come from the save alone: merging in the starting stock would
+  // refill a material every time it ran out.
+  p.materials = (isObj(raw.materials) ? { ...raw.materials } : structuredClone(def.materials)) as Profile['materials'];
   for (const k of Object.keys(p.materials)) {
     const v = Math.floor(num(p.materials[k]));
     if (v > 0) p.materials[k] = v;
     else delete p.materials[k];
   }
   p.seeds = (Array.isArray(p.seeds) ? p.seeds : [])
-    .filter((s) => isObj(s) && typeof s.species === 'string' && num(s.count) > 0)
-    .map((s) => ({ species: s.species, traits: strArr(s.traits) as Profile['seeds'][0]['traits'], count: Math.floor(num(s.count)) }));
+    .filter((s) => isObj(s) && isCrop(s.species) && num(s.count) > 0)
+    .map((s) => ({ species: s.species, traits: traitArr(s.traits), count: Math.floor(num(s.count)) }));
   p.produce = (Array.isArray(p.produce) ? p.produce : [])
-    .filter((s) => isObj(s) && typeof s.species === 'string' && num(s.count) > 0)
-    .map((s) => ({ species: s.species, traits: strArr(s.traits) as Profile['produce'][0]['traits'], quality: Math.max(1, Math.min(3, Math.floor(num(s.quality, 1)))) as 1 | 2 | 3, count: Math.floor(num(s.count)) }));
+    .filter((s) => isObj(s) && isCrop(s.species) && num(s.count) > 0)
+    .map((s) => ({ species: s.species, traits: traitArr(s.traits), quality: Math.max(1, Math.min(3, Math.floor(num(s.quality, 1)))) as 1 | 2 | 3, count: Math.floor(num(s.count)) }));
   // Plots: rebuild the grid and copy each saved plot's state onto it by id.
   const fresh = makePlots();
   const saved = Array.isArray(p.plots) ? p.plots : [];
@@ -105,10 +132,10 @@ export function validate(raw: Record<string, unknown>): Profile {
     f.unlocked = !!s.unlocked;
     f.tilled = !!s.tilled;
     f.watered = !!s.watered;
-    if (isObj(s.crop) && typeof s.crop.species === 'string') {
+    if (isObj(s.crop) && isCrop(s.crop.species)) {
       f.crop = {
         species: s.crop.species,
-        traits: strArr(s.crop.traits) as never,
+        traits: traitArr(s.crop.traits),
         growth: Math.max(0, num(s.crop.growth)),
         fertilised: !!s.crop.fertilised,
         dryDays: Math.max(0, Math.floor(num(s.crop.dryDays))),
@@ -125,6 +152,17 @@ export function validate(raw: Record<string, unknown>): Profile {
   p.tiers.unlocked = Math.max(1, Math.min(3, Math.floor(num(p.tiers.unlocked, 1))));
   p.tiers.selected = Math.max(1, Math.min(p.tiers.unlocked, Math.floor(num(p.tiers.selected, 1))));
   if (!Array.isArray(p.loadout.grafts) || p.loadout.grafts.length !== 5) p.loadout.grafts = [null, null, null, null, null];
+  p.loadout.grafts = p.loadout.grafts.map((g) =>
+    isObj(g) && isCrop(g.species) && CROPS[g.species].weapon ? { species: g.species, traits: traitArr(g.traits), quality: Math.max(1, Math.min(3, Math.floor(num(g.quality, 1)))) as 1 | 2 | 3 } : null,
+  );
+  p.equipment.owned = strArr(p.equipment.owned).filter((id) => id in EQUIPMENT);
+  for (const slot of Object.keys(p.equipment.equipped) as (keyof Profile['equipment']['equipped'])[]) {
+    const id = p.equipment.equipped[slot];
+    if (typeof id !== 'string' || !p.equipment.owned.includes(id) || EQUIPMENT[id].slot !== slot) p.equipment.equipped[slot] = null;
+  }
+  // A damaged run result is dropped rather than half-applied.
+  if (!isRunResult(p.pendingRun)) p.pendingRun = null;
+  if (!isRunResult(p.lastRun)) p.lastRun = null;
   return p;
 }
 

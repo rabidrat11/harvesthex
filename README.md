@@ -45,6 +45,11 @@ No backend, no accounts: progress saves in the browser.
 | 1-5, mouse wheel | farm tools, seed choice |
 | Esc | pause / back |
 
+In menus, arrows (or WASD) move, Enter picks and Esc backs out. Space never
+presses a menu button, and a menu ignores picks for a moment after it opens,
+so dashing through a level-up cannot choose a card unseen. Leaving the window
+mid-fight pauses the game.
+
 All keys can be rebound in Controls. A gamepad works too (left stick move,
 right stick aim, triggers fire and skill, A dash, X interact, Y jar, Start
 pause; menus navigate with the stick). Auto-aim, auto-fire, gentle intensity,

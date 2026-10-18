@@ -88,6 +88,8 @@ export class TitleScene extends Phaser.Scene {
     const dt = dms / 1000;
     this.t += dt;
     this.view.update(dt);
+    // Every key on the title screen belongs to its menus.
+    game.input.blocked = true;
     game.input.pollGamepad(dt);
     // A slow drift across the farm and back.
     const cam = this.cameras.main;

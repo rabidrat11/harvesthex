@@ -1,3 +1,4 @@
+import { Component, type ComponentChildren } from 'preact';
 import { useEffect } from 'preact/hooks';
 import { bridge, ui, useUi, type Panel } from './store';
 import { installMenuNav } from './components';
@@ -41,8 +42,9 @@ function backFor(panel: string | null): (() => void) | null {
   if (!panel) return null;
   switch (panel) {
     case 'levelup':
-    case 'results':
       return null;
+    case 'results':
+      return () => bridge.expedition?.finish();
     case 'chest':
       // Escape takes the first prize rather than trapping the player.
       return () => bridge.expedition?.chestTake(0);
@@ -60,6 +62,41 @@ function backFor(panel: string | null): (() => void) | null {
       if (s.screen === 'farm' && !s.back.length) return () => bridge.farm?.closePanel();
       return () => ui.close();
   }
+}
+
+/**
+ * One part of the interface failing to draw never takes the rest with it. A
+ * panel that fails is closed the way Escape would (or the game resumes), so a
+ * paused run is never left with nothing on screen.
+ */
+class Guard extends Component<{ name: string; onError?: () => void; children: ComponentChildren }, { failed: boolean }> {
+  state = { failed: false };
+
+  componentDidCatch(err: unknown) {
+    console.error(`[ui] ${this.props.name} failed to draw`, err);
+    this.setState({ failed: true });
+    const recover = this.props.onError;
+    if (recover) setTimeout(recover, 0);
+  }
+
+  render() {
+    return this.state.failed ? null : this.props.children;
+  }
+}
+
+function recoverFrom(panel: Panel | null) {
+  const s = ui.get();
+  if (s.panel !== panel) return;
+  ui.toast('Something went wrong drawing that panel, so it was closed.', 'warn');
+  const back = backFor(panel);
+  if (back) back();
+  else if (s.screen === 'expedition') bridge.expedition?.resume();
+  else if (s.screen === 'farm') bridge.farm?.closePanel();
+  else ui.closeAll();
+  // If nothing above could close it, close it outright: never a blank, blocked screen.
+  setTimeout(() => {
+    if (ui.get().panel === panel) ui.closeAll();
+  }, 50);
 }
 
 let navInstalled = false;
@@ -92,10 +129,14 @@ export function App() {
   return (
     <div class="layer">
       {screen === 'title' && !panel && <TitleMenu />}
-      {screen === 'expedition' && <ExpeditionHud />}
-      {screen === 'farm' && <FarmHud />}
+      <Guard key={`hud-${screen}`} name="HUD">
+        {screen === 'expedition' && <ExpeditionHud />}
+        {screen === 'farm' && <FarmHud />}
+      </Guard>
       <BannerView />
-      <PanelHost panel={panel} screen={screen} />
+      <Guard key={`panel-${panel}`} name={`${panel} panel`} onError={() => recoverFrom(panel)}>
+        <PanelHost panel={panel} screen={screen} />
+      </Guard>
       <Toasts />
     </div>
   );

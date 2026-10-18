@@ -84,6 +84,7 @@ export function firePattern(w: World, p: Pattern, c: FireCtx) {
       const e = w.emitters.obtain();
       if (!e) break;
       e.owner = c.owner;
+      e.ownerId = c.owner?.id ?? 0;
       e.x = c.x;
       e.y = c.y;
       e.angle = c.aim;
@@ -115,8 +116,9 @@ export function firePattern(w: World, p: Pattern, c: FireCtx) {
         e.interval = p.interval;
         e.rows = p.rows;
         e.duration = p.rows * p.interval + 0.01;
-        // Lanes come from the arena edge furthest from the player.
-        e.angle = w.rng.int(0, 3) * (Math.PI / 2);
+        // Lanes come from the arena edge furthest from the player (they march
+        // towards the player's side).
+        e.angle = Math.round(Math.atan2(w.player.y - w.arenaCy, w.player.x - w.arenaCx) / (Math.PI / 2)) * (Math.PI / 2);
         e.count = w.rng.int(0, p.safeEvery - 1);
       }
       break;
@@ -234,7 +236,7 @@ function clampArena(w: World, v: number, axis: 'x' | 'y') {
 
 export function updateEmitter(w: World, e: import('./entities').Emitter, dt: number) {
   if (e.owner) {
-    if (!e.owner.active || e.owner.state === 'dying') {
+    if (!e.owner.active || e.owner.id !== e.ownerId || e.owner.state === 'dying') {
       w.emitters.release(e);
       return;
     }

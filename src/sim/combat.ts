@@ -30,6 +30,8 @@ export interface HitOpts {
   canCrit?: boolean;
   executed?: boolean;
   forceCrit?: boolean;
+  /** Struck by an Infested mite: its kills never release more mites. */
+  mite?: boolean;
 }
 
 const STATUS_CAP = { poisonStacks: 8, bleedStacks: 10 };
@@ -122,7 +124,7 @@ export function hitEnemy(w: World, e: Enemy, base: number, o: HitOpts): number {
 
   if (src !== 'dot') {
     // Frozen shatter.
-    if (e.frozenT > 0 && o.type === 'physical' && dmg >= Math.min(18, e.maxHp * 0.08)) shatter(w, e, wi);
+    if (e.frozenT > 0 && (o.type === 'physical' || (wi?.extra.shatterBonus ?? 0) > 0) && dmg >= Math.min(18, e.maxHp * 0.08)) shatter(w, e, wi);
     // Trait hooks.
     if (wi && src !== 'explosion' && src !== 'chain' && src !== 'shatter') {
       if (wi.hasTrait('volatile') && w.rng.chance(0.2 * wi.traitPower)) {
@@ -130,6 +132,8 @@ export function hitEnemy(w: World, e: Enemy, base: number, o: HitOpts): number {
       }
       if (wi.hasTrait('charged') && w.rng.chance(0.25 * wi.traitPower)) chainLightning(w, e, base * 0.5, 1, 70, 0.5, wi);
       if (wi.hasTrait('leeching') && w.rng.chance(0.05 * wi.traitPower)) healPlayer(w, 1, false);
+      const frost = w.run.hookValue('frostTouch');
+      if (frost && e.active && w.rng.chance(frost)) applyStatus(w, e, { id: 'chill', power: 0.35, duration: 1.6 }, wi);
       if (wi.params.chain > 0 && wi.def.tags.includes('chain')) {
         chainLightning(w, e, base * (wi.extra.chainFalloff ?? 0.7), wi.params.chain, wi.extra.chainRange ?? 70, wi.extra.chainFalloff ?? 0.7, wi);
       }
@@ -155,6 +159,7 @@ export function hitEnemy(w: World, e: Enemy, base: number, o: HitOpts): number {
 export function applyStatus(w: World, e: Enemy, s: StatusApply, wi: WeaponInstance | null) {
   if (s.chance !== undefined && !w.rng.chance(s.chance)) return;
   const dur = s.duration * (1 + w.run.stats.statusDuration);
+  if (wi && (s.id === 'poison' || s.id === 'burn' || s.id === 'bleed')) e.dotBy = wi;
   switch (s.id) {
     case 'poison': {
       e.poisonDps = Math.min(e.poisonDps + s.power, s.power * STATUS_CAP.poisonStacks + 4);
@@ -277,7 +282,7 @@ export function explode(w: World, x: number, y: number, r: number, dmg: number, 
     if (dist2(x, y, e.x, e.y) > (r + e.radius) ** 2) continue;
     hitEnemy(w, e, dmg, { ...o, source: o.source ?? 'explosion', fromX: x, fromY: y });
   }
-  if (o.source !== 'summon' && w.run.hookValue('explosionSpores') && (o.visual === 'big' || o.visual === 'fire')) {
+  if (o.source !== 'summon' && w.run.hookValue('explosionSpores') && (o.visual === 'big' || o.visual === 'fire' || (o.visual === 'small' && w.rng.chance(0.35)))) {
     spawnSporeCloud(w, x, y, r * 0.8, 2.5, 4 * (1 + w.run.stats.nature), null);
   }
 }
@@ -351,7 +356,7 @@ export function updateStatuses(w: World, e: Enemy, dt: number) {
       e.dotTick = 0.5;
       const amount = e.dotAcc;
       e.dotAcc = 0;
-      hitEnemy(w, e, amount, { type, source: 'dot', canCrit: false });
+      hitEnemy(w, e, amount, { type, source: 'dot', canCrit: false, weapon: e.dotBy });
     }
   } else {
     e.dotAcc = 0;
@@ -378,7 +383,7 @@ export function killEnemy(w: World, e: Enemy, wi: WeaponInstance | null, o?: Hit
 
   // Sap.
   let sap = def.sap;
-  if (wi?.hasTrait('golden') && w.rng.chance(0.5)) sap += 1;
+  if (wi?.hasTrait('golden') && w.rng.chance(0.5 * wi.traitPower)) sap += 1;
   if (def.id === 'taxman') sap += e.carried * 1.5;
   dropSap(w, e.x, e.y, sap);
 
@@ -393,14 +398,14 @@ export function killEnemy(w: World, e: Enemy, wi: WeaponInstance | null, o?: Hit
     else if (d.what === 'farthing') for (let i = 0; i < n; i++) w.dropPickup('farthing', e.x, e.y, 1);
     else if (d.what.startsWith('mat:')) w.dropPickup('material', e.x, e.y, n, d.what.slice(4));
   }
-  const farthingChance = (0.012 + (wi?.hasTrait('golden') ? 0.04 : 0)) * (1 + w.run.hookValue('goldRush') * 0.5) * tierLoot;
+  const farthingChance = (0.012 + (wi?.hasTrait('golden') ? 0.04 * wi.traitPower : 0)) * (1 + w.run.hookValue('goldRush') * 0.5) * tierLoot;
   if (w.rng.chance(farthingChance)) w.dropPickup('farthing', e.x, e.y, 1);
   const foragerNose = w.run.cls.id === 'forager' ? 1.5 : 1;
   if (!def.small && w.rng.chance(0.0045 * tierLoot * luck * foragerNose * (e.elite ? 40 : 1))) dropSeed(w, e.x, e.y);
   if (w.rng.chance(0.004 * (def.small ? 0.3 : 1))) w.dropPickup('heart', e.x, e.y, 1);
 
   // On-kill hooks.
-  if (wi?.hasTrait('infested') && w.rng.chance(0.25 * wi.traitPower)) w.spawnMite(e.x, e.y, wi);
+  if (wi?.hasTrait('infested') && !o?.mite && w.rng.chance(0.25 * wi.traitPower)) w.spawnMite(e.x, e.y, wi);
   if (w.run.cls.id === 'reaper' && wi && (wi.def.tags.includes('melee') || o?.executed)) {
     healPlayer(w, 1, false, 4);
   }

@@ -91,8 +91,8 @@ item({
   name: 'Farmer’s Almanac',
   rarity: 'uncommon',
   icon: cf(CF.plank),
-  mods: { sapYield: 0.2, luck: 2, harvest: 0.1 },
-  desc: 'Sap yield +20%, luck +2, harvest +10%.',
+  mods: { sapYield: 0.25, luck: 3 },
+  desc: 'Sap yield +25%, luck +3.',
   flavour: 'Predicts rain, frost, and the occasional uprising of root vegetables.',
 });
 item({
@@ -339,7 +339,7 @@ item({
   name: 'The Gilded Jug',
   rarity: 'legendary',
   icon: cf(CF.gildedJug),
-  mods: { sapYield: 0.3, harvest: 0.25 },
+  mods: { sapYield: 0.3 },
   hook: 'goldRush',
   hookValue: 2,
   tags: ['golden'],
